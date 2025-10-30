@@ -11,7 +11,7 @@ const Footer = () => {
                 <Video className="h-5 w-5 text-primary-foreground" />
               </div>
               <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                VideoChat
+                Vidsnap
               </span>
             </div>
             <p className="text-sm text-muted-foreground">
@@ -51,7 +51,7 @@ const Footer = () => {
 
         <div className="border-t border-border/40 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
           <p className="text-sm text-muted-foreground">
-            © 2025 VideoChat. All rights reserved.
+            © 2025 Vidsnap. All rights reserved.
           </p>
           <p className="text-sm text-muted-foreground">
             Powered by Alibaba Cloud AI
