@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Check } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const benefits = [
   "No credit card required",
@@ -29,9 +30,11 @@ const CTA = () => {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <Button size="lg" className="bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity shadow-xl shadow-primary/20 text-lg h-14 px-8">
-              Get Started for Free
-              <ArrowRight className="ml-2 h-5 w-5" />
+            <Button asChild size="lg" className="bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity shadow-xl shadow-primary/20 text-lg h-14 px-8">
+              <Link to="/dashboard">
+                Get Started for Free
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Link>
             </Button>
             <Button size="lg" variant="outline" className="text-lg h-14 px-8 border-2 hover:bg-secondary">
               Contact Sales
