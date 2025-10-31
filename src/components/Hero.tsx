@@ -32,12 +32,12 @@ const Hero = () => {
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4">
-              <Button asChild size="lg" className="bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity shadow-xl shadow-primary/20 text-lg h-14 px-8">
-                <Link to="/dashboard">
-                  Get Started for Free
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Link>
-              </Button>
+            <Button asChild size="lg" className="bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity shadow-xl shadow-primary/20 text-lg h-14 px-8">
+              <Link to="/app">
+                Get Started for Free
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Link>
+            </Button>
               <Button size="lg" variant="outline" className="text-lg h-14 px-8 border-2 hover:bg-secondary">
                 <Play className="mr-2 h-5 w-5" />
                 Watch Demo

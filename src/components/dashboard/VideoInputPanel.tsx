@@ -9,9 +9,10 @@ import { Youtube, Upload, Sparkles } from "lucide-react";
 
 interface VideoInputPanelProps {
   onStartProcessing: (input: string, type: "youtube" | "upload") => void;
+  disabled?: boolean;
 }
 
-const VideoInputPanel = ({ onStartProcessing }: VideoInputPanelProps) => {
+const VideoInputPanel = ({ onStartProcessing, disabled = false }: VideoInputPanelProps) => {
   const [inputType, setInputType] = useState<"youtube" | "upload">("youtube");
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);

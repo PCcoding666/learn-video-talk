@@ -36,7 +36,7 @@ const ResultTabs = ({ videoData }: ResultTabsProps) => {
       </TabsContent>
 
       <TabsContent value="keyframes">
-        <KeyframesGallery />
+        <KeyframesGallery keyframes={[]} />
       </TabsContent>
 
       <TabsContent value="chat">
@@ -44,7 +44,7 @@ const ResultTabs = ({ videoData }: ResultTabsProps) => {
       </TabsContent>
 
       <TabsContent value="transcript">
-        <TranscriptViewer />
+        <TranscriptViewer transcript="" />
       </TabsContent>
     </Tabs>
   );
