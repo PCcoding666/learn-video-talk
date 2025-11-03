@@ -8,12 +8,14 @@ interface KeyframesGalleryProps {
   keyframes: Keyframe[];
   highlightedKeyframes?: number[];
   onTimestampClick?: (timestamp: number) => void;
+  onAskWithKeyframe?: (frameId: number, frameUrl: string) => void;
 }
 
 const KeyframesGallery = ({ 
   keyframes, 
   highlightedKeyframes = [],
-  onTimestampClick 
+  onTimestampClick,
+  onAskWithKeyframe
 }: KeyframesGalleryProps) => {
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -35,10 +37,22 @@ const KeyframesGallery = ({
             )}
             onClick={() => onTimestampClick?.(frame.timestamp)}
           >
-            <div className="aspect-video bg-gradient-to-br from-primary/10 to-accent/10 relative">
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-4xl opacity-50">🎬</span>
-              </div>
+            <div className="aspect-video bg-gradient-to-br from-primary/10 to-accent/10 relative overflow-hidden">
+              {frame.url ? (
+                <img 
+                  src={frame.url} 
+                  alt={frame.description}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    // 图片加载失败时的处理
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-4xl opacity-50">🎬</span>
+                </div>
+              )}
               <div className="absolute bottom-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs flex items-center gap-1">
                 <Clock className="w-3 h-3" />
                 {formatTime(frame.timestamp)}
@@ -57,7 +71,9 @@ const KeyframesGallery = ({
                 className="w-full h-7 text-xs"
                 onClick={(e) => {
                   e.stopPropagation();
-                  // TODO: Trigger chat with this frame
+                  if (onAskWithKeyframe && frame.url) {
+                    onAskWithKeyframe(frame.id, frame.url);
+                  }
                 }}
               >
                 <MessageSquare className="w-3 h-3 mr-1" />

@@ -1,18 +1,18 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Copy, Download, FileDown } from "lucide-react";
+import MarkdownRenderer from "@/components/chat/MarkdownRenderer";
+import type { VideoData } from "@/pages/MainApp";
 
 interface SummaryViewProps {
-  videoData: any;
+  videoData: VideoData;
 }
 
 const SummaryView = ({ videoData }: SummaryViewProps) => {
+  // 从 summary中提取关键点（如果有的话）
+  // TODO: 后续可以让LLM生成结构化的关键点
   const keyPoints = [
-    "选择一门适合初学者的编程语言(如 Python)",
-    "建立扎实的基础知识体系",
-    "通过实际项目练习巩固所学",
-    "加入开发者社区获取帮助",
-    "保持持续学习和更新知识",
+    "视频内容的核心要点",
   ];
 
   return (
@@ -43,18 +43,20 @@ const SummaryView = ({ videoData }: SummaryViewProps) => {
             <span>📚</span>
             详细总结
           </h3>
-          <Button variant="ghost" size="sm" className="gap-2">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="gap-2"
+            onClick={() => {
+              navigator.clipboard.writeText(videoData.summary);
+            }}
+          >
             <Copy className="w-4 h-4" />
             复制
           </Button>
         </div>
-        <div className="prose prose-sm max-w-none">
-          <p className="text-foreground/90 leading-relaxed">
-            这个视频详细介绍了学习编程的完整路径。首先强调了选择合适编程语言的重要性，推荐初学者从Python开始。
-            视频中讲解了如何建立系统化的学习计划，包括理论学习和实践项目的平衡。特别强调了通过实际项目来巩固所学知识的必要性。
-            同时建议加入开发者社区，通过与他人交流来加速学习进程。最后提醒学习者要保持持续学习的态度，
-            因为技术领域日新月异，需要不断更新自己的知识体系。
-          </p>
+        <div className="prose prose-sm dark:prose-invert max-w-none">
+          <MarkdownRenderer content={videoData.summary || "暂无总结"} />
         </div>
       </Card>
 

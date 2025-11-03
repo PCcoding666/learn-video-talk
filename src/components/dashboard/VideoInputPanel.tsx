@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Youtube, Upload, Sparkles } from "lucide-react";
 
 interface VideoInputPanelProps {
-  onStartProcessing: (input: string, type: "youtube" | "upload") => void;
+  onStartProcessing: (input: string | File, type: "youtube" | "upload") => void;
   disabled?: boolean;
 }
 
@@ -24,7 +24,7 @@ const VideoInputPanel = ({ onStartProcessing, disabled = false }: VideoInputPane
     if (inputType === "youtube" && youtubeUrl) {
       onStartProcessing(youtubeUrl, "youtube");
     } else if (inputType === "upload" && file) {
-      onStartProcessing(file.name, "upload");
+      onStartProcessing(file, "upload");  // 传递File对象，不是文件名
     }
   };
 

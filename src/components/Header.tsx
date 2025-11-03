@@ -1,7 +1,33 @@
 import { Button } from "@/components/ui/button";
-import { Video } from "lucide-react";
+import { Video, LogOut, User } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate, useLocation } from "react-router-dom";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const Header = () => {
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  const isLoginPage = location.pathname === '/login';
+  
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/login');
+  };
+  
+  const getUserInitials = () => {
+    if (!user?.email) return 'U';
+    return user.email.charAt(0).toUpperCase();
+  };
   return (
     <header className="fixed top-0 left-0 right-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-lg">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -28,12 +54,59 @@ const Header = () => {
           </nav>
 
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" className="hidden sm:inline-flex">
-              Sign In
-            </Button>
-            <Button size="sm" className="bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity shadow-lg">
-              Get Started Free
-            </Button>
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+                    <Avatar className="h-9 w-9">
+                      <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-primary-foreground">
+                        {getUserInitials()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">{user.email}</p>
+                      <p className="text-xs leading-none text-muted-foreground">
+                        免费版用户
+                      </p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate('/app')}>
+                    <User className="mr-2 h-4 w-4" />
+                    我的视频
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut} className="text-red-600">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    退出登录
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              !isLoginPage && (
+                <>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="hidden sm:inline-flex"
+                    onClick={() => navigate('/login')}
+                  >
+                    登录
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    className="bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity shadow-lg"
+                    onClick={() => navigate('/login')}
+                  >
+                    免费开始
+                  </Button>
+                </>
+              )
+            )}
           </div>
         </div>
       </div>

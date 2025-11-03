@@ -13,6 +13,7 @@ interface CenterPanelProps {
   currentTimestamp: number;
   highlightedKeyframes: number[];
   onTimestampJump: (timestamp: number) => void;
+  onAskWithKeyframe?: (frameId: number, frameUrl: string) => void;
 }
 
 const CenterPanel = ({ 
@@ -20,7 +21,8 @@ const CenterPanel = ({
   videoData, 
   currentTimestamp,
   highlightedKeyframes,
-  onTimestampJump 
+  onTimestampJump,
+  onAskWithKeyframe
 }: CenterPanelProps) => {
   return (
     <main className="flex-1 w-[50%] overflow-y-auto bg-gradient-to-b from-background to-muted/20">
@@ -71,6 +73,7 @@ const CenterPanel = ({
                   keyframes={videoData.keyframes}
                   highlightedKeyframes={highlightedKeyframes}
                   onTimestampClick={onTimestampJump}
+                  onAskWithKeyframe={onAskWithKeyframe}
                 />
               </TabsContent>
 
@@ -82,6 +85,18 @@ const CenterPanel = ({
                 <TranscriptViewer transcript={videoData.transcript} />
               </TabsContent>
             </Tabs>
+          </div>
+        )}
+        
+        {processingState === "error" && (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center space-y-4 max-w-md">
+              <div className="text-6xl mb-4">❌</div>
+              <h2 className="text-2xl font-bold text-destructive">处理失败</h2>
+              <p className="text-muted-foreground">
+                视频处理过程中出现错误，请检查视频链接或文件后重试
+              </p>
+            </div>
           </div>
         )}
       </div>
