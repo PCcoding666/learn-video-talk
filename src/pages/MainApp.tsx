@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import Header from "@/components/Header";
 import LeftPanel from "@/components/app/LeftPanel";
 import CenterPanel from "@/components/app/CenterPanel";
@@ -70,8 +70,8 @@ const MainApp = () => {
             return `${mins}:${secs.toString().padStart(2, '0')}`;
           };
           
-          // 处理summary: 优先使用 detailed_summary，其次是 content_summary
-          const summaryText = summary?.detailed_summary || summary?.content_summary || "暂无总结";
+          // 处理summary: 优先使用 detailed，其次是 standard，最后是 brief
+          const summaryText = summary?.detailed || summary?.standard || summary?.brief || "暂无总结";
           
           // 处理transcript: 处理多种可能的数据结构
           let transcriptText = "";
@@ -95,8 +95,8 @@ const MainApp = () => {
           
           const videoData = {
             id: response.video_id,
-            title: metadata?.title || "未命名视频",
-            duration: metadata?.duration ? formatDuration(metadata.duration) : "未知",
+            title: metadata?.video?.title || metadata?.title || "未命名视频",
+            duration: metadata?.video?.duration ? formatDuration(metadata.video.duration) : (metadata?.duration ? formatDuration(metadata.duration) : "未知"),
             summary: summaryText,
             keyframes,
             transcript: transcriptText,
@@ -167,8 +167,8 @@ const MainApp = () => {
           return `${mins}:${secs.toString().padStart(2, '0')}`;
         };
         
-        // 处理summary: 优先使用 detailed_summary，其次是 content_summary
-        const summaryText = summary?.detailed_summary || summary?.content_summary || "暂无总结";
+        // 处理summary: 优先使用 detailed，其次是 standard，最后是 brief
+        const summaryText = summary?.detailed || summary?.standard || summary?.brief || "暂无总结";
         
         // 处理transcript
         let transcriptText = "";
@@ -192,8 +192,8 @@ const MainApp = () => {
         
         const videoData = {
           id: response.video_id,
-          title: metadata?.title || "未命名视频",
-          duration: metadata?.duration ? formatDuration(metadata.duration) : "未知",
+          title: metadata?.video?.title || metadata?.title || "未命名视频",
+          duration: metadata?.video?.duration ? formatDuration(metadata.video.duration) : (metadata?.duration ? formatDuration(metadata.duration) : "未知"),
           summary: summaryText,
           keyframes,
           transcript: transcriptText,
@@ -231,32 +231,35 @@ const MainApp = () => {
     <div className="min-h-screen bg-background">
       <Header />
       
-      <div className="flex h-[calc(100vh-64px)] w-full">
-        {/* Left Panel - 25% */}
-        <LeftPanel 
-          onStartProcessing={handleStartProcessing}
-          processingState={processingState}
-          onVideoSelect={handleLoadHistoryVideo}
-        />
+      {/* 主应用内容区域：添加顶部间距避免被Header遮挡 */}
+      <div className="pt-14 h-screen flex flex-col">
+        <div className="flex flex-1 w-full">
+          {/* Left Panel - 25% */}
+          <LeftPanel 
+            onStartProcessing={handleStartProcessing}
+            processingState={processingState}
+            onVideoSelect={handleLoadHistoryVideo}
+          />
 
-        {/* Center Panel - 50% */}
-        <CenterPanel 
-          processingState={processingState}
-          videoData={videoData}
-          currentTimestamp={currentTimestamp}
-          highlightedKeyframes={highlightedKeyframes}
-          onTimestampJump={handleTimestampJump}
-          onAskWithKeyframe={handleAskWithKeyframe}
-        />
+          {/* Center Panel - 50% */}
+          <CenterPanel 
+            processingState={processingState}
+            videoData={videoData}
+            currentTimestamp={currentTimestamp}
+            highlightedKeyframes={highlightedKeyframes}
+            onTimestampJump={handleTimestampJump}
+            onAskWithKeyframe={handleAskWithKeyframe}
+          />
 
-        {/* Right Panel - 25% */}
-        <RightPanel 
-          videoData={videoData}
-          onTimestampJump={handleTimestampJump}
-          onHighlightKeyframes={handleHighlightKeyframes}
-          selectedKeyframe={selectedKeyframeForChat}
-          onKeyframeUsed={() => setSelectedKeyframeForChat(null)}
-        />
+          {/* Right Panel - 25% */}
+          <RightPanel 
+            videoData={videoData}
+            onTimestampJump={handleTimestampJump}
+            onHighlightKeyframes={handleHighlightKeyframes}
+            selectedKeyframe={selectedKeyframeForChat}
+            onKeyframeUsed={() => setSelectedKeyframeForChat(null)}
+          />
+        </div>
       </div>
     </div>
   );

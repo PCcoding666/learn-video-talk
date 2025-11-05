@@ -18,6 +18,7 @@ const Header = () => {
   const location = useLocation();
   
   const isLoginPage = location.pathname === '/login';
+  const isMainApp = location.pathname === '/app'; // 判断是否在主应用页面
   
   const handleSignOut = async () => {
     await signOut();
@@ -29,29 +30,42 @@ const Header = () => {
     return user.email.charAt(0).toUpperCase();
   };
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-lg">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between">
+    <header className={`fixed top-0 left-0 right-0 z-50 border-b ${
+      isMainApp 
+        ? 'border-border/20 bg-background/95 backdrop-blur-sm' // 主应用：更轻量的背景
+        : 'border-border/40 bg-background/80 backdrop-blur-lg' // 首页：营销风格
+    }`}>
+      <div className={isMainApp ? 'px-4' : 'container mx-auto px-4 sm:px-6 lg:px-8'}>
+        <div className={`flex items-center justify-between ${
+          isMainApp ? 'h-14' : 'h-16' // 主应用页面高度更小
+        }`}>
           <div className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent">
-              <Video className="h-5 w-5 text-primary-foreground" />
+            <div className={`flex items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent ${
+              isMainApp ? 'h-8 w-8' : 'h-9 w-9' // 主应用Logo更小
+            }`}>
+              <Video className={isMainApp ? 'h-4 w-4 text-primary-foreground' : 'h-5 w-5 text-primary-foreground'} />
             </div>
-            <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            <span className={`font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent ${
+              isMainApp ? 'text-lg' : 'text-xl' // 主应用文字更小
+            }`}>
               Vidsnap
             </span>
           </div>
           
-          <nav className="hidden md:flex items-center gap-8">
-            <a href="#features" className="text-sm font-medium text-foreground/80 hover:text-foreground transition-colors">
-              Features
-            </a>
-            <a href="#how-it-works" className="text-sm font-medium text-foreground/80 hover:text-foreground transition-colors">
-              How It Works
-            </a>
-            <a href="#testimonials" className="text-sm font-medium text-foreground/80 hover:text-foreground transition-colors">
-              Testimonials
-            </a>
-          </nav>
+          {/* 仅在首页显示导航链接 */}
+          {!isMainApp && (
+            <nav className="hidden md:flex items-center gap-8">
+              <a href="#features" className="text-sm font-medium text-foreground/80 hover:text-foreground transition-colors">
+                Features
+              </a>
+              <a href="#how-it-works" className="text-sm font-medium text-foreground/80 hover:text-foreground transition-colors">
+                How It Works
+              </a>
+              <a href="#testimonials" className="text-sm font-medium text-foreground/80 hover:text-foreground transition-colors">
+                Testimonials
+              </a>
+            </nav>
+          )}
 
           <div className="flex items-center gap-3">
             {user ? (
