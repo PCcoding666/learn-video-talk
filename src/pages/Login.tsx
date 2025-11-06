@@ -47,7 +47,7 @@ const Login = () => {
               },
             }}
             providers={['google']}
-            redirectTo={`${window.location.origin}/app`}
+            redirectTo="https://vidsnap.space/app"
             localization={{
               variables: {
                 sign_in: {

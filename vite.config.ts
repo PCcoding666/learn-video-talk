@@ -17,6 +17,16 @@ export default defineConfig(({ mode }) => ({
       },
     },
   },
+  preview: {
+    host: true,
+    port: 3000,
+    allowedHosts: [
+      'vidsnap.space',
+      'www.vidsnap.space',
+      'localhost',
+      '127.0.0.1'
+    ],
+  },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
     alias: {
