@@ -232,20 +232,20 @@ const MainApp = () => {
   };
 
   return (
-    <div className="min-h-screen bg-muted/30">
+    <div className="min-h-screen bg-slate-50 dark:bg-background">
       <Header />
       
       {/* 主应用内容区域 */}
       <div className="pt-16 h-screen flex flex-col">
-        <div className="flex flex-1 w-full gap-4 p-4">
-          {/* Left Panel - 25% */}
+        <div className="flex flex-1 w-full gap-5 p-5">
+          {/* Left Panel - Fixed width sidebar */}
           <LeftPanel 
             onStartProcessing={handleStartProcessing}
             processingState={processingState}
             onVideoSelect={handleLoadHistoryVideo}
           />
 
-          {/* Center Panel - 50% */}
+          {/* Center Panel - Flexible main content */}
           <CenterPanel 
             processingState={processingState}
             videoData={videoData}
@@ -256,7 +256,7 @@ const MainApp = () => {
             onDemoClick={handleDemoClick}
           />
 
-          {/* Right Panel - 25% */}
+          {/* Right Panel - Fixed width sidebar */}
           <RightPanel 
             videoData={videoData}
             onTimestampJump={handleTimestampJump}
