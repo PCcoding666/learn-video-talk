@@ -138,7 +138,6 @@ const MainApp = () => {
   };
 
   // 加载历史视频详情
-  // 加载历史视频详情
   const handleLoadHistoryVideo = async (videoId: string) => {
     setProcessingState("processing");
     
@@ -221,19 +220,24 @@ const MainApp = () => {
     }
   };
 
-  // 处理从关键帧点击“用这张图提问”
+  // 处理示例视频点击
+  const handleDemoClick = (demoUrl: string) => {
+    handleStartProcessing(demoUrl, "youtube");
+  };
+
+  // 处理从关键帧点击"用这张图提问"
   const handleAskWithKeyframe = (frameId: number, frameUrl: string) => {
     setSelectedKeyframeForChat({ id: frameId, url: frameUrl });
     console.log("选中关键帧用于提问:", frameId, frameUrl);
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-muted/30">
       <Header />
       
-      {/* 主应用内容区域：添加顶部间距避免被Header遮挡 */}
-      <div className="pt-14 h-screen flex flex-col">
-        <div className="flex flex-1 w-full">
+      {/* 主应用内容区域 */}
+      <div className="pt-16 h-screen flex flex-col">
+        <div className="flex flex-1 w-full gap-4 p-4">
           {/* Left Panel - 25% */}
           <LeftPanel 
             onStartProcessing={handleStartProcessing}
@@ -249,6 +253,7 @@ const MainApp = () => {
             highlightedKeyframes={highlightedKeyframes}
             onTimestampJump={handleTimestampJump}
             onAskWithKeyframe={handleAskWithKeyframe}
+            onDemoClick={handleDemoClick}
           />
 
           {/* Right Panel - 25% */}

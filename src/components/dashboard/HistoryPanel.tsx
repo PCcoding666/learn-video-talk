@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Clock, PlayCircle, Loader2, AlertCircle } from "lucide-react";
+import { Clock, PlayCircle, Loader2, RefreshCw } from "lucide-react";
 import { apiService, type VideoHistoryItem } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -19,7 +19,7 @@ const HistoryPanel = ({ onVideoSelect }: HistoryPanelProps = {}) => {
 
   useEffect(() => {
     loadHistory();
-  }, [user]); // 当用户登录状态变化时重新加载
+  }, [user]);
 
   const loadHistory = async () => {
     setIsLoading(true);
@@ -31,14 +31,13 @@ const HistoryPanel = ({ onVideoSelect }: HistoryPanelProps = {}) => {
       if (response.status === "success") {
         setVideos(response.videos || []);
         
-        // 如果有提示消息（如需要登录），显示但不阻塞界面
         if (response.message && response.videos.length === 0) {
           setError(response.message);
         }
       }
     } catch (err) {
       console.error("加载历史记录失败:", err);
-      setError("加载失败，请稍后重试");
+      setError("暂时无法加载");
     } finally {
       setIsLoading(false);
     }
@@ -67,7 +66,6 @@ const HistoryPanel = ({ onVideoSelect }: HistoryPanelProps = {}) => {
   };
 
   const handleVideoClick = async (video: VideoHistoryItem) => {
-    // 只有完成状态的视频才能点击查看
     if (video.processing_status !== 'completed') {
       toast({
         variant: "default",
@@ -80,7 +78,6 @@ const HistoryPanel = ({ onVideoSelect }: HistoryPanelProps = {}) => {
     if (onVideoSelect) {
       onVideoSelect(video.id);
     } else {
-      // 如果没有提供回调，显示提示
       toast({
         title: "加载视频详情",
         description: `正在加载: ${video.title}`,
@@ -104,55 +101,58 @@ const HistoryPanel = ({ onVideoSelect }: HistoryPanelProps = {}) => {
   };
 
   return (
-    <div className="space-y-4">
-      <h3 className="text-sm font-semibold flex items-center gap-2">
-        <span>📚</span>
-        最近处理
-      </h3>
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+          <Clock className="w-4 h-4" />
+          最近处理
+        </h3>
+        {error && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            onClick={loadHistory}
+          >
+            <RefreshCw className="w-3 h-3" />
+          </Button>
+        )}
+      </div>
 
-      <ScrollArea className="h-[300px]">
+      <ScrollArea className="h-[240px]">
         {isLoading ? (
-          <div className="flex items-center justify-center py-12 text-muted-foreground">
-            <Loader2 className="w-5 h-5 animate-spin mr-2" />
+          <div className="flex items-center justify-center py-8 text-muted-foreground">
+            <Loader2 className="w-4 h-4 animate-spin mr-2" />
             <span className="text-sm">加载中...</span>
           </div>
         ) : error && videos.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-            <AlertCircle className="w-8 h-8 mb-2" />
-            <p className="text-sm text-center">{error}</p>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="mt-4"
-              onClick={loadHistory}
-            >
-              重试
-            </Button>
+          <div className="flex items-center justify-center py-8 text-muted-foreground">
+            <PlayCircle className="w-5 h-5 opacity-50 mr-2" />
+            <span className="text-sm">还没有处理记录</span>
           </div>
         ) : videos.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-            <PlayCircle className="w-8 h-8 mb-2 opacity-50" />
-            <p className="text-sm">还没有处理记录</p>
+          <div className="flex items-center justify-center py-8 text-muted-foreground">
+            <PlayCircle className="w-5 h-5 opacity-50 mr-2" />
+            <span className="text-sm">还没有处理记录</span>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {videos.map((video) => (
               <div
                 key={video.id}
                 onClick={() => handleVideoClick(video)}
-                className="p-4 rounded-lg bg-card hover:bg-accent/50 border border-border cursor-pointer transition-all hover:shadow-md group"
+                className="p-3 rounded-lg bg-muted/50 hover:bg-accent/50 border border-transparent hover:border-border cursor-pointer transition-all group"
               >
-                <div className="flex items-start gap-3">
-                  <PlayCircle className="w-5 h-5 text-primary mt-0.5 group-hover:scale-110 transition-transform flex-shrink-0" />
+                <div className="flex items-start gap-2">
+                  <PlayCircle className="w-4 h-4 text-primary mt-0.5 group-hover:scale-110 transition-transform flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2 mb-1">
-                      <p className="font-medium text-sm line-clamp-2 flex-1">
+                      <p className="font-medium text-sm line-clamp-1 flex-1">
                         {video.title}
                       </p>
                       {getStatusBadge(video.processing_status)}
                     </div>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Clock className="w-3 h-3" />
                       <span>{formatTime(video.created_at)}</span>
                       <span>·</span>
                       <span>{formatDuration(video.duration)}</span>
@@ -166,7 +166,7 @@ const HistoryPanel = ({ onVideoSelect }: HistoryPanelProps = {}) => {
       </ScrollArea>
 
       {videos.length > 0 && (
-        <Button variant="outline" className="w-full" size="sm">
+        <Button variant="ghost" className="w-full text-xs h-8 text-muted-foreground hover:text-foreground" size="sm">
           查看全部历史
         </Button>
       )}

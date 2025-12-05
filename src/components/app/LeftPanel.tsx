@@ -1,3 +1,4 @@
+import { Card } from "@/components/ui/card";
 import VideoInputPanel from "@/components/dashboard/VideoInputPanel";
 import HistoryPanel from "@/components/dashboard/HistoryPanel";
 
@@ -9,14 +10,19 @@ interface LeftPanelProps {
 
 const LeftPanel = ({ onStartProcessing, processingState, onVideoSelect }: LeftPanelProps) => {
   return (
-    <aside className="w-[25%] min-w-[300px] max-w-[400px] border-r border-border bg-card/30 backdrop-blur-sm overflow-y-auto">
-      <div className="p-6 space-y-6">
+    <aside className="w-[25%] min-w-[300px] max-w-[400px] flex flex-col gap-4 overflow-y-auto">
+      {/* 视频输入卡片 */}
+      <Card className="p-5 shadow-sm bg-card">
         <VideoInputPanel 
           onStartProcessing={onStartProcessing}
           disabled={processingState === "processing"}
         />
+      </Card>
+      
+      {/* 历史记录卡片 */}
+      <Card className="p-5 shadow-sm bg-card flex-1">
         <HistoryPanel onVideoSelect={onVideoSelect} />
-      </div>
+      </Card>
     </aside>
   );
 };
