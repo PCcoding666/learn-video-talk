@@ -8,6 +8,12 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    allowedHosts: [
+      'vidsnap.space',
+      'www.vidsnap.space',
+      'localhost',
+      '127.0.0.1'
+    ],
     proxy: {
       // 代理 API 请求到后端服务，解决跨域问题
       '/api': {
