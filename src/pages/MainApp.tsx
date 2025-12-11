@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import Header from "@/components/Header";
 import LeftPanel from "@/components/app/LeftPanel";
 import CenterPanel from "@/components/app/CenterPanel";
@@ -27,6 +28,7 @@ export interface VideoData {
 
 const MainApp = () => {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [processingState, setProcessingState] = useState<ProcessingState>("idle");
   const [videoData, setVideoData] = useState<VideoData | null>(null);
   const [currentTimestamp, setCurrentTimestamp] = useState<number>(0);
@@ -40,8 +42,8 @@ const MainApp = () => {
     
     try {
       toast({
-        title: "开始处理视频",
-        description: type === "youtube" ? "正在下载并分析YouTube视频..." : "正在上传并分析视频文件...",
+        title: t('processing.startTitle'),
+        description: type === "youtube" ? t('processing.downloadingYoutube') : t('processing.uploadingVideo'),
       });
 
       const response = await apiService.processVideo({
@@ -70,8 +72,8 @@ const MainApp = () => {
             return `${mins}:${secs.toString().padStart(2, '0')}`;
           };
           
-          // 处理summary: 优先使用 detailed，其次是 standard，最后是 brief
-          const summaryText = summary?.detailed || summary?.standard || summary?.brief || "暂无总结";
+          // Process summary: prioritize detailed, then standard, then brief
+          const summaryText = summary?.detailed || summary?.standard || summary?.brief || t('video.noSummaryAvailable');
           
           // 处理transcript: 处理多种可能的数据结构
           let transcriptText = "";
@@ -85,18 +87,18 @@ const MainApp = () => {
             }
           }
           
-          // 处理keyframes: 使用 scene_description 或 description
+          // Process keyframes: use scene_description or description
           const keyframes = (metadata?.keyframes || []).map((kf: any, idx: number) => ({
             id: kf.frame_id || idx + 1,
             timestamp: kf.timestamp,
-            description: kf.scene_description || kf.description || `关键帧 ${idx + 1}`,
+            description: kf.scene_description || kf.description || t('video.keyframe', { number: idx + 1 }),
             url: kf.oss_image_url,
           }));
           
           const videoData = {
             id: response.video_id,
-            title: metadata?.video?.title || metadata?.title || "未命名视频",
-            duration: metadata?.video?.duration ? formatDuration(metadata.video.duration) : (metadata?.duration ? formatDuration(metadata.duration) : "未知"),
+            title: metadata?.video?.title || metadata?.title || t('video.untitled'),
+            duration: metadata?.video?.duration ? formatDuration(metadata.video.duration) : (metadata?.duration ? formatDuration(metadata.duration) : t('video.unknownDuration')),
             summary: summaryText,
             keyframes,
             transcript: transcriptText,
@@ -106,24 +108,24 @@ const MainApp = () => {
           setVideoData(videoData);
 
           toast({
-            title: "✅ 处理完成",
-            description: `视频已成功分析，生成了 ${keyframes.length} 个关键帧`,
+            title: t('processing.completeTitle'),
+            description: t('processing.completeDescription', { count: keyframes.length }),
           });
         } catch (dataError: any) {
-          console.error("数据转换失败:", dataError);
-          throw new Error(`数据转换失败: ${dataError.message}`);
+          console.error("Data conversion failed:", dataError);
+          throw new Error(t('processing.dataConversionFailed', { message: dataError.message }));
         }
       } else {
-        throw new Error("处理失败");
+        throw new Error(t('processing.processingFailed'));
       }
     } catch (error: any) {
-      console.error("视频处理失败:", error);
+      console.error("Video processing failed:", error);
       setProcessingState("error");
       
       toast({
         variant: "destructive",
-        title: "❌ 处理失败",
-        description: error.message || "视频处理过程中发生错误，请重试",
+        title: t('processing.failedTitle'),
+        description: error.message || t('processing.failedDescription'),
       });
     }
   };
@@ -137,14 +139,14 @@ const MainApp = () => {
     setTimeout(() => setHighlightedKeyframes([]), 3000);
   };
 
-  // 加载历史视频详情
+  // Load history video details
   const handleLoadHistoryVideo = async (videoId: string) => {
     setProcessingState("processing");
     
     try {
       toast({
-        title: "加载历史记录",
-        description: "正在加载视频详情...",
+        title: "Loading History",
+        description: "Loading video details...",
       });
 
       const response = await apiService.getVideoDetails(videoId);
@@ -158,7 +160,7 @@ const MainApp = () => {
         const metadata = response.metadata;
         const summary = response.video_summary;
         
-        // 处理duration: 从秒数转换为 "M:SS" 格式
+        // Process duration: convert seconds to "M:SS" format
         const formatDuration = (seconds: number | string): string => {
           if (typeof seconds === 'string') return seconds;
           const mins = Math.floor(seconds / 60);
@@ -166,10 +168,10 @@ const MainApp = () => {
           return `${mins}:${secs.toString().padStart(2, '0')}`;
         };
         
-        // 处理summary: 优先使用 detailed，其次是 standard，最后是 brief
-        const summaryText = summary?.detailed || summary?.standard || summary?.brief || "暂无总结";
+        // Process summary: prioritize detailed, then standard, then brief
+        const summaryText = summary?.detailed || summary?.standard || summary?.brief || "No summary available";
         
-        // 处理transcript
+        // Process transcript
         let transcriptText = "";
         if (metadata?.transcript) {
           if (typeof metadata.transcript === 'string') {
@@ -181,18 +183,18 @@ const MainApp = () => {
           }
         }
         
-        // 处理keyframes
+        // Process keyframes
         const keyframes = (metadata?.keyframes || []).map((kf: any, idx: number) => ({
           id: kf.frame_id || idx + 1,
           timestamp: kf.timestamp,
-          description: kf.scene_description || kf.description || `关键帧 ${idx + 1}`,
+          description: kf.scene_description || kf.description || `Keyframe ${idx + 1}`,
           url: kf.oss_image_url,
         }));
         
         const videoData = {
           id: response.video_id,
-          title: metadata?.video?.title || metadata?.title || "未命名视频",
-          duration: metadata?.video?.duration ? formatDuration(metadata.video.duration) : (metadata?.duration ? formatDuration(metadata.duration) : "未知"),
+          title: metadata?.video?.title || metadata?.title || "Untitled Video",
+          duration: metadata?.video?.duration ? formatDuration(metadata.video.duration) : (metadata?.duration ? formatDuration(metadata.duration) : "Unknown"),
           summary: summaryText,
           keyframes,
           transcript: transcriptText,
@@ -202,20 +204,20 @@ const MainApp = () => {
         setVideoData(videoData);
 
         toast({
-          title: "✅ 加载成功",
-          description: `已加载视频: ${videoData.title}`,
+          title: "✅ Load Successful",
+          description: `Loaded video: ${videoData.title}`,
         });
       } else {
-        throw new Error("加载失败");
+        throw new Error("Load failed");
       }
     } catch (error: any) {
-      console.error("加载历史视频失败:", error);
+      console.error("Failed to load history video:", error);
       setProcessingState("error");
       
       toast({
         variant: "destructive",
-        title: "❌ 加载失败",
-        description: error.message || "加载视频详情失败，请重试",
+        title: "❌ Load Failed",
+        description: error.message || "Failed to load video details, please try again",
       });
     }
   };

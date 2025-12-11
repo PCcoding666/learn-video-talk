@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Clock, PlayCircle, Loader2, RefreshCw, AlertCircle } from "lucide-react";
@@ -12,6 +13,7 @@ interface HistoryPanelProps {
 
 const HistoryPanel = ({ onVideoSelect }: HistoryPanelProps = {}) => {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [videos, setVideos] = useState<VideoHistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -70,7 +72,7 @@ const HistoryPanel = ({ onVideoSelect }: HistoryPanelProps = {}) => {
       toast({
         variant: "default",
         title: "Video not ready",
-        description: video.processing_status === 'processing' ? "Still processing, please wait" : "Processing failed",
+        description: video.processing_status === 'processing' ? t('status.processing') : t('status.failed'),
       });
       return;
     }
