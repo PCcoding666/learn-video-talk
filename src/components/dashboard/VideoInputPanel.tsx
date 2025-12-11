@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +15,7 @@ interface VideoInputPanelProps {
 }
 
 const VideoInputPanel = ({ onStartProcessing, disabled = false }: VideoInputPanelProps) => {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [inputType, setInputType] = useState<"youtube" | "upload">("youtube");
   const [youtubeUrl, setYoutubeUrl] = useState("");
@@ -201,7 +203,7 @@ const VideoInputPanel = ({ onStartProcessing, disabled = false }: VideoInputPane
         {disabled ? (
           <>
             <Loader2 className="w-4 h-4 animate-spin" />
-            Processing...
+            {t('common.processing')}
           </>
         ) : (
           <>
