@@ -1,7 +1,9 @@
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeSanitize from 'rehype-sanitize';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import type { CSSProperties } from 'react';
 import type { Components } from 'react-markdown';
 
 interface MarkdownRendererProps {
@@ -17,7 +19,7 @@ const MarkdownRenderer = ({ content }: MarkdownRendererProps) => {
       
       return !isInline ? (
         <SyntaxHighlighter
-          style={oneDark as any}
+          style={oneDark as Record<string, CSSProperties>}
           language={match[1]}
           PreTag="div"
           className="rounded-lg !mt-2 !mb-2"
@@ -107,6 +109,7 @@ const MarkdownRenderer = ({ content }: MarkdownRendererProps) => {
     <div className="prose prose-sm dark:prose-invert max-w-none">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeSanitize]}
         components={components}
       >
         {content}

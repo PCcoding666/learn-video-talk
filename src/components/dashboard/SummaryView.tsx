@@ -75,11 +75,13 @@ const SummaryView = ({ videoData }: SummaryViewProps) => {
           <div className="text-center p-4 rounded-lg bg-muted/50">
             <div className="text-2xl mb-2">👁️</div>
             <p className="text-sm text-muted-foreground mb-1">分辨率</p>
+            {/* TODO: Replace with actual resolution from video metadata (e.g. videoData.width x videoData.height) */}
             <p className="font-semibold">1080p</p>
           </div>
           <div className="text-center p-4 rounded-lg bg-muted/50">
             <div className="text-2xl mb-2">💾</div>
             <p className="text-sm text-muted-foreground mb-1">文件大小</p>
+            {/* TODO: Replace with actual file size from video metadata */}
             <p className="font-semibold">45.2 MB</p>
           </div>
         </div>

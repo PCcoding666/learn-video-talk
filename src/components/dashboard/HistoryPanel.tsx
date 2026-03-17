@@ -6,6 +6,7 @@ import { Clock, PlayCircle, Loader2, RefreshCw, AlertCircle } from "lucide-react
 import { apiService, type VideoHistoryItem } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { formatDuration } from "@/lib/utils";
 
 interface HistoryPanelProps {
   onVideoSelect?: (videoId: string) => void;
@@ -45,13 +46,6 @@ const HistoryPanel = ({ onVideoSelect }: HistoryPanelProps = {}) => {
     }
   };
 
-  const formatDuration = (seconds?: number): string => {
-    if (!seconds) return "--:--";
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
   const formatTime = (isoString: string): string => {
     const date = new Date(isoString);
     const now = new Date();
@@ -68,11 +62,22 @@ const HistoryPanel = ({ onVideoSelect }: HistoryPanelProps = {}) => {
   };
 
   const handleVideoClick = async (video: VideoHistoryItem) => {
-    if (video.processing_status !== 'completed') {
+    // 只有 processing 和 failed 状态不允许点击
+    // pending 和 completed 都允许（pending 进入 workbench，completed 进入结果页）
+    if (video.processing_status === 'processing') {
       toast({
         variant: "default",
-        title: "Video not ready",
-        description: video.processing_status === 'processing' ? t('status.processing') : t('status.failed'),
+        title: "Video processing",
+        description: t('status.processing'),
+      });
+      return;
+    }
+    
+    if (video.processing_status === 'failed') {
+      toast({
+        variant: "destructive",
+        title: "Processing failed",
+        description: t('status.failed'),
       });
       return;
     }

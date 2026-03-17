@@ -1,14 +1,22 @@
 import { useState } from "react";
-import { useTranslation } from "react-i18next";
 import Header from "@/components/Header";
 import LeftPanel from "@/components/app/LeftPanel";
 import CenterPanel from "@/components/app/CenterPanel";
 import RightPanel from "@/components/app/RightPanel";
+import Workbench from "@/components/app/Workbench";
 import { apiService } from "@/services/api";
+import type { CompiledMetadata, VideoSummaries } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
+import { formatDuration } from "@/lib/utils";
 
-type ProcessingState = "idle" | "processing" | "completed" | "error";
+type ProcessingState = "idle" | "ingest" | "workbench" | "completed" | "error" | "loading";
+
+interface TerminalLog {
+  id: string;
+  time: string;
+  message: string;
+  type: "info" | "success" | "warning" | "error" | "process";
+}
 
 export interface Keyframe {
   id: number;
@@ -24,109 +32,191 @@ export interface VideoData {
   summary: string;
   keyframes: Keyframe[];
   transcript: string;
+  oss_video_url?: string;
 }
 
 const MainApp = () => {
   const { toast } = useToast();
-  const { t } = useTranslation();
   const [processingState, setProcessingState] = useState<ProcessingState>("idle");
   const [videoData, setVideoData] = useState<VideoData | null>(null);
   const [currentTimestamp, setCurrentTimestamp] = useState<number>(0);
   const [highlightedKeyframes, setHighlightedKeyframes] = useState<number[]>([]);
   
-  // 用于从关键帧传递图片到聊天
-  const [selectedKeyframeForChat, setSelectedKeyframeForChat] = useState<{ id: number; url: string } | null>(null);
+  // 极客工作台状态
+  const [terminalLogs, setTerminalLogs] = useState<TerminalLog[]>([]);
+  const [workbenchResults, setWorkbenchResults] = useState<Record<string, unknown>>({});
+  
+  const addLog = (message: string, type: TerminalLog["type"] = "info") => {
+    const newLog: TerminalLog = {
+      id: Math.random().toString(36).substring(2, 9),
+      time: new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      message,
+      type
+    };
+    setTerminalLogs(prev => [...prev, newLog].slice(-50));
+  };
 
   const handleStartProcessing = async (input: string | File, type: "youtube" | "upload") => {
-    setProcessingState("processing");
+    setProcessingState("ingest");
+    setTerminalLogs([]);
+    addLog(`INITIATING_INGEST: ${type.toUpperCase()}`, "process");
     
     try {
-      toast({
-        title: t('processing.startTitle'),
-        description: type === "youtube" ? t('processing.downloadingYoutube') : t('processing.uploadingVideo'),
-      });
-
+      addLog(`REQUESTING_ASSET_FROM_SOURCE...`, "info");
+      
       const response = await apiService.processVideo({
         youtube_url: type === "youtube" ? (input as string) : undefined,
         video_file: type === "upload" ? (input as File) : undefined,
+        mode: "ingest" // 原子化：仅摄入
       });
 
       if (response.status === "success") {
-        console.log("✅ 后端响应数据:", response);
-        
-        try {
-          setProcessingState("completed");
-          
-          // 转换后端数据格式到前端格式
-          const metadata = response.metadata;
-          const summary = response.video_summary;
-          
-          console.log("metadata:", metadata);
-          console.log("summary:", summary);
-          
-          // 处理duration: 从秒数转换为 "M:SS" 格式
-          const formatDuration = (seconds: number | string): string => {
-            if (typeof seconds === 'string') return seconds;
-            const mins = Math.floor(seconds / 60);
-            const secs = seconds % 60;
-            return `${mins}:${secs.toString().padStart(2, '0')}`;
-          };
-          
-          // Process summary: prioritize detailed, then standard, then brief
-          const summaryText = summary?.detailed || summary?.standard || summary?.brief || t('video.noSummaryAvailable');
-          
-          // 处理transcript: 处理多种可能的数据结构
-          let transcriptText = "";
-          if (metadata?.transcript) {
-            if (typeof metadata.transcript === 'string') {
-              transcriptText = metadata.transcript;
-            } else if (Array.isArray(metadata.transcript.segments)) {
-              transcriptText = metadata.transcript.segments.map((seg: any) => seg.text).join(" ");
-            } else if (metadata.transcript.full_text) {
-              transcriptText = metadata.transcript.full_text;
-            }
-          }
-          
-          // Process keyframes: use scene_description or description
-          const keyframes = (metadata?.keyframes || []).map((kf: any, idx: number) => ({
-            id: kf.frame_id || idx + 1,
-            timestamp: kf.timestamp,
-            description: kf.scene_description || kf.description || t('video.keyframe', { number: idx + 1 }),
-            url: kf.oss_image_url,
-          }));
-          
-          const videoData = {
-            id: response.video_id,
-            title: metadata?.video?.title || metadata?.title || t('video.untitled'),
-            duration: metadata?.video?.duration ? formatDuration(metadata.video.duration) : (metadata?.duration ? formatDuration(metadata.duration) : t('video.unknownDuration')),
-            summary: summaryText,
-            keyframes,
-            transcript: transcriptText,
-          };
-          
-          console.log("✅ 转换后的视频数据:", videoData);
-          setVideoData(videoData);
+        addLog(`ASSET_LOCKED: ${response.video_id}`, "success");
+        addLog(`METADATA_RECEIVED: TITLE="${response.title}"`, "info");
 
-          toast({
-            title: t('processing.completeTitle'),
-            description: t('processing.completeDescription', { count: keyframes.length }),
-          });
-        } catch (dataError: any) {
-          console.error("Data conversion failed:", dataError);
-          throw new Error(t('processing.dataConversionFailed', { message: dataError.message }));
-        }
+        const vData: VideoData = {
+          id: response.video_id,
+          title: response.title || "Untitled",
+          duration: formatDuration(response.duration || 0),
+          oss_video_url: response.oss_video_url,
+          summary: "",
+          keyframes: [],
+          transcript: ""
+        };
+
+        setVideoData(vData);
+        setProcessingState("workbench");
+        addLog(`WORKBENCH_READY: Waiting for module activation.`, "success");
       } else {
-        throw new Error(t('processing.processingFailed'));
+        throw new Error("Ingest failed");
       }
-    } catch (error: any) {
-      console.error("Video processing failed:", error);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      addLog(`FATAL_ERROR: ${message}`, "error");
       setProcessingState("error");
-      
       toast({
         variant: "destructive",
-        title: t('processing.failedTitle'),
-        description: error.message || t('processing.failedDescription'),
+        title: "Ingest Failed",
+        description: message,
       });
+    }
+  };
+
+  const handleModuleTrigger = async (moduleId: string) => {
+    if (!videoData?.id) {
+      toast({ variant: "destructive", title: "Error", description: "No video loaded" });
+      throw new Error("No video loaded");
+    }
+
+    addLog(`TRIGGER_MODULE: ${moduleId.toUpperCase()}`, "process");
+    
+    // 埋点：记录模块点击事件
+    try {
+      await apiService.trackModuleClick(
+        videoData.id, 
+        moduleId as 'download' | 'transcript' | 'keyframes' | 'summary'
+      );
+      addLog(`TELEMETRY_SENT: ${moduleId}`, "info");
+    } catch (e) {
+      console.warn('Telemetry failed:', e);
+    }
+    
+    addLog(`ALLOCATING_RESOURCES...`, "info");
+
+    try {
+      let result;
+      
+      switch (moduleId) {
+        case 'download':
+          // download 模块：直接提供 OSS URL
+          if (videoData.oss_video_url) {
+            addLog(`RESOURCE_READY: Download link available`, "success");
+            window.open(videoData.oss_video_url, '_blank');
+            toast({ title: "Download Ready", description: "Opening download link..." });
+          } else {
+            addLog(`ERROR: No download URL available`, "error");
+            toast({ variant: "destructive", title: "Error", description: "No download URL available" });
+            throw new Error("No download URL available");
+          }
+          return;
+
+        case 'transcript':
+          addLog(`LOGIC_EXECUTING: Calling Paraformer-v2...`, "info");
+          result = await apiService.transcribeVideo(videoData.id);
+          if (result.status === 'success') {
+            addLog(`MODULE_COMPLETED: TRANSCRIPT | ${result.segments_count} segments`, "success");
+            const transcriptText = result.segments
+              ? result.segments.map(seg => seg.text).join(' ')
+              : `Transcription completed: ${result.segments_count} segments`;
+            setVideoData(prev => prev ? { 
+              ...prev, 
+              transcript: transcriptText
+            } : null);
+            setWorkbenchResults(prev => ({
+              ...prev,
+              transcript: {
+                segments: result.segments || [],
+                segments_count: result.segments_count,
+                language: result.language,
+                confidence: result.confidence,
+              }
+            }));
+            toast({ title: "Transcription Complete", description: `${result.segments_count} segments extracted` });
+          }
+          break;
+
+        case 'keyframes':
+          addLog(`LOGIC_EXECUTING: Running scene detection...`, "info");
+          result = await apiService.extractKeyframes(videoData.id);
+          if (result.status === 'success') {
+            addLog(`MODULE_COMPLETED: KEYFRAMES | ${result.keyframes_count} frames`, "success");
+            const newKeyframes = (result.keyframes || []).map((kf, idx) => ({
+              id: kf.frame_id,
+              timestamp: kf.timestamp,
+              description: `Keyframe ${idx + 1}`,
+              url: kf.oss_image_url
+            }));
+            setVideoData(prev => prev ? { ...prev, keyframes: newKeyframes } : null);
+            toast({ title: "Keyframes Extracted", description: `${result.keyframes_count} keyframes found` });
+          }
+          break;
+
+        case 'summary':
+          addLog(`LOGIC_EXECUTING: Calling Qwen-VL...`, "info");
+          result = await apiService.summarizeVideo(videoData.id);
+          if (result.status === 'success') {
+            addLog(`MODULE_COMPLETED: SUMMARY generated`, "success");
+            const summaryText = result.detailed_summary || result.standard_summary || result.brief_summary || '';
+            setVideoData(prev => prev ? { ...prev, summary: summaryText } : null);
+            toast({ title: "Summary Generated", description: "AI summary is ready" });
+          } else if (result.prerequisite === 'transcribe') {
+            addLog(`ERROR: Requires transcription first`, "error");
+            toast({ 
+              variant: "destructive", 
+              title: "Prerequisite Missing", 
+              description: "Please run Speech-to-Text first" 
+            });
+          }
+          break;
+
+        default:
+          addLog(`ERROR: Unknown module ${moduleId}`, "error");
+      }
+
+      if (result && result.status === 'error') {
+        throw new Error(result.error || 'Unknown error');
+      }
+
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      addLog(`FATAL_ERROR: ${message}`, "error");
+      toast({
+        variant: "destructive",
+        title: "Module Failed",
+        description: message,
+      });
+      // Re-throw so Workbench can update tool status to "error"
+      throw error;
     }
   };
 
@@ -139,132 +229,121 @@ const MainApp = () => {
     setTimeout(() => setHighlightedKeyframes([]), 3000);
   };
 
-  // Load history video details
+  // 加载历史记录时直接进入 completed 状态
   const handleLoadHistoryVideo = async (videoId: string) => {
-    setProcessingState("processing");
+    setProcessingState("loading");
+    setTerminalLogs([]);
+    addLog(`LOADING_ARCHIVE: ${videoId}`, "process");
     
     try {
-      toast({
-        title: "Loading History",
-        description: "Loading video details...",
-      });
-
       const response = await apiService.getVideoDetails(videoId);
-
       if (response.status === "success") {
-        console.log("✅ 加载历史视频数据:", response);
+        const metadata: CompiledMetadata | undefined = response.metadata;
+        const summary: VideoSummaries | undefined = response.video_summary;
         
-        setProcessingState("completed");
+        const summaryText = summary?.detailed || summary?.standard || summary?.brief || "";
         
-        // 转换后端数据格式到前端格式
-        const metadata = response.metadata;
-        const summary = response.video_summary;
-        
-        // Process duration: convert seconds to "M:SS" format
-        const formatDuration = (seconds: number | string): string => {
-          if (typeof seconds === 'string') return seconds;
-          const mins = Math.floor(seconds / 60);
-          const secs = seconds % 60;
-          return `${mins}:${secs.toString().padStart(2, '0')}`;
-        };
-        
-        // Process summary: prioritize detailed, then standard, then brief
-        const summaryText = summary?.detailed || summary?.standard || summary?.brief || "No summary available";
-        
-        // Process transcript
         let transcriptText = "";
         if (metadata?.transcript) {
-          if (typeof metadata.transcript === 'string') {
-            transcriptText = metadata.transcript;
-          } else if (Array.isArray(metadata.transcript.segments)) {
-            transcriptText = metadata.transcript.segments.map((seg: any) => seg.text).join(" ");
-          } else if (metadata.transcript.full_text) {
-            transcriptText = metadata.transcript.full_text;
-          }
+          if (typeof metadata.transcript === 'string') transcriptText = metadata.transcript;
+          else if (Array.isArray(metadata.transcript.segments)) transcriptText = metadata.transcript.segments.map((seg) => seg.text).join(" ");
         }
         
-        // Process keyframes
-        const keyframes = (metadata?.keyframes || []).map((kf: any, idx: number) => ({
+        const keyframes = (metadata?.keyframes || []).map((kf, idx) => ({
           id: kf.frame_id || idx + 1,
           timestamp: kf.timestamp,
-          description: kf.scene_description || kf.description || `Keyframe ${idx + 1}`,
+          description: kf.scene_description || `Keyframe ${idx + 1}`,
           url: kf.oss_image_url,
         }));
         
-        const videoData = {
+        const vData: VideoData = {
           id: response.video_id,
-          title: metadata?.video?.title || metadata?.title || "Untitled Video",
-          duration: metadata?.video?.duration ? formatDuration(metadata.video.duration) : (metadata?.duration ? formatDuration(metadata.duration) : "Unknown"),
+          title: metadata?.video?.title || metadata?.title || "Untitled",
+          duration: metadata?.video?.duration ? formatDuration(metadata.video.duration) : formatDuration(metadata?.duration || 0),
           summary: summaryText,
           keyframes,
           transcript: transcriptText,
+          oss_video_url: metadata?.video?.oss_video_url,
         };
         
-        console.log("✅ 转换后的视频数据:", videoData);
-        setVideoData(videoData);
-
-        toast({
-          title: "✅ Load Successful",
-          description: `Loaded video: ${videoData.title}`,
-        });
-      } else {
-        throw new Error("Load failed");
+        setVideoData(vData);
+        
+        // 根据是否有处理数据决定进入哪个状态
+        const hasProcessedData = keyframes.length > 0 || transcriptText || summaryText;
+        if (hasProcessedData) {
+          setProcessingState("completed");
+          addLog(`ARCHIVE_RESTORED: ${vData.title}`, "success");
+        } else {
+          // 只是摄入了，进入 workbench 让用户选择处理
+          setProcessingState("workbench");
+          addLog(`ASSET_LOADED: ${vData.title} (no processed data)`, "info");
+        }
       }
-    } catch (error: any) {
-      console.error("Failed to load history video:", error);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      addLog(`RESTORE_FAILED: ${message}`, "error");
       setProcessingState("error");
-      
-      toast({
-        variant: "destructive",
-        title: "❌ Load Failed",
-        description: error.message || "Failed to load video details, please try again",
-      });
     }
   };
 
-  // 处理示例视频点击
+  // 处理示例视频
   const handleDemoClick = (demoUrl: string) => {
     handleStartProcessing(demoUrl, "youtube");
   };
 
-  // 处理从关键帧点击"用这张图提问"
-  const handleAskWithKeyframe = (frameId: number, frameUrl: string) => {
-    setSelectedKeyframeForChat({ id: frameId, url: frameUrl });
-    console.log("选中关键帧用于提问:", frameId, frameUrl);
-  };
-
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-background">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#050505] text-foreground">
       <Header />
       
-      {/* 主应用内容区域 */}
       <div className="pt-16 h-screen flex flex-col">
-        <div className="flex flex-1 w-full gap-5 p-5">
-          {/* Left Panel - Fixed width sidebar */}
+        <div className="flex flex-1 w-full gap-5 p-5 overflow-hidden">
           <LeftPanel 
             onStartProcessing={handleStartProcessing}
-            processingState={processingState}
+            processingState={processingState === "ingest" || processingState === "loading" ? "processing" : "idle"}
             onVideoSelect={handleLoadHistoryVideo}
           />
 
-          {/* Center Panel - Flexible main content */}
-          <CenterPanel 
-            processingState={processingState}
-            videoData={videoData}
-            currentTimestamp={currentTimestamp}
-            highlightedKeyframes={highlightedKeyframes}
-            onTimestampJump={handleTimestampJump}
-            onAskWithKeyframe={handleAskWithKeyframe}
-            onDemoClick={handleDemoClick}
-          />
+          <main className="flex-1 min-w-0">
+             <div className="h-full bg-card rounded-2xl border border-border/60 shadow-sm p-6 overflow-y-auto">
+                {processingState === "loading" ? (
+                    <div className="flex flex-col items-center justify-center h-full">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+                      <p className="text-muted-foreground font-mono text-sm">Loading video data...</p>
+                    </div>
+                ) : (processingState === "workbench" || processingState === "ingest") && videoData ? (
+                    <Workbench 
+                        videoData={videoData} 
+                        logs={terminalLogs} 
+                        onTriggerModule={handleModuleTrigger}
+                        isIngesting={processingState === "ingest"}
+                        moduleResults={workbenchResults}
+                    />
+                ) : processingState === "ingest" ? (
+                    <Workbench 
+                        videoData={{ id: "", title: "Ingesting...", duration: "0:00", summary: "", keyframes: [], transcript: "" }} 
+                        logs={terminalLogs} 
+                        onTriggerModule={async () => {}}
+                        isIngesting={true}
+                    />
+                ) : (
+                    <CenterPanel 
+                        processingState={processingState === "completed" ? "completed" : "idle"}
+                        videoData={videoData}
+                        currentTimestamp={currentTimestamp}
+                        highlightedKeyframes={highlightedKeyframes}
+                        onTimestampJump={handleTimestampJump}
+                        onDemoClick={handleDemoClick}
+                    />
+                )}
+             </div>
+          </main>
 
-          {/* Right Panel - Fixed width sidebar */}
           <RightPanel 
-            videoData={videoData}
+            videoData={processingState === "completed" ? videoData : null}
             onTimestampJump={handleTimestampJump}
             onHighlightKeyframes={handleHighlightKeyframes}
-            selectedKeyframe={selectedKeyframeForChat}
-            onKeyframeUsed={() => setSelectedKeyframeForChat(null)}
+            selectedKeyframe={null}
+            onKeyframeUsed={() => {}}
           />
         </div>
       </div>

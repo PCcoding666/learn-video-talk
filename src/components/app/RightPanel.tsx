@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -48,70 +48,89 @@ const RightPanel = ({
   const MAX_KEYFRAMES = 5;
   const sessionReady = sessionId !== null;
 
+  // Ref to track selected keyframes count without triggering re-renders in the effect
+  const selectedKeyframesRef = useRef(selectedKeyframes);
+  selectedKeyframesRef.current = selectedKeyframes;
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
   
+  // Handle keyframe selection from external prop
   useEffect(() => {
-    if (selectedKeyframe) {
-      if (selectedKeyframes.length >= MAX_KEYFRAMES) {
-        toast({
-          variant: "destructive",
-          title: "已达上限",
-          description: `最多只能选择 ${MAX_KEYFRAMES} 张关键帧`,
-        });
-        return;
-      }
-      
-      if (selectedKeyframes.some(kf => kf.id === selectedKeyframe.id)) {
-        toast({
-          title: "已选择",
-          description: `关键帧 #${selectedKeyframe.id} 已在选择列表中`,
-        });
-        return;
-      }
-      
-      setSelectedKeyframes(prev => [...prev, selectedKeyframe]);
-      if (selectedKeyframes.length === 0) {
-        setInput("请分析这些场景的内容");
-      }
-      toast({
-        title: "关键帧已添加",
-        description: `已选中 ${selectedKeyframes.length + 1}/${MAX_KEYFRAMES} 张关键帧`,
-      });
-    }
-  }, [selectedKeyframe]);
-  
-  useEffect(() => {
-    if (videoData && !sessionId) {
-      initializeChatSession();
-    }
-  }, [videoData]);
+    if (!selectedKeyframe) return;
 
-  const initializeChatSession = async () => {
-    if (!videoData || isInitializing) return;
+    const current = selectedKeyframesRef.current;
     
-    setIsInitializing(true);
-    try {
-      const response = await apiService.startChatSession({
-        video_id: videoData.id
-      });
-
-      if (response.status === "success") {
-        setSessionId(response.session_id);
-        console.log("✅ 聊天会话已初始化:", response.session_id);
-      }
-    } catch (error: any) {
-      console.error("聊天会话初始化失败:", error);
+    if (current.length >= MAX_KEYFRAMES) {
       toast({
         variant: "destructive",
-        title: "会话初始化失败",
-        description: error.message || "无法启动聊天功能",
+        title: "已达上限",
+        description: `最多只能选择 ${MAX_KEYFRAMES} 张关键帧`,
       });
-    } finally {
-      setIsInitializing(false);
+      return;
     }
-  };
+    
+    if (current.some(kf => kf.id === selectedKeyframe.id)) {
+      toast({
+        title: "已选择",
+        description: `关键帧 #${selectedKeyframe.id} 已在选择列表中`,
+      });
+      return;
+    }
+    
+    setSelectedKeyframes(prev => [...prev, selectedKeyframe]);
+    if (current.length === 0) {
+      setInput("请分析这些场景的内容");
+    }
+    toast({
+      title: "关键帧已添加",
+      description: `已选中 ${current.length + 1}/${MAX_KEYFRAMES} 张关键帧`,
+    });
+  }, [selectedKeyframe, toast]);
+  
+  // Initialize chat session when video data becomes available
+  // Uses AbortController to prevent stale responses on rapid video changes
+  useEffect(() => {
+    if (!videoData || sessionId) return;
+
+    let cancelled = false;
+    const abortController = new AbortController();
+
+    const initSession = async () => {
+      setIsInitializing(true);
+      try {
+        const response = await apiService.startChatSession({
+          video_id: videoData.id
+        });
+
+        if (!cancelled && response.status === "success") {
+          setSessionId(response.session_id);
+          console.log("Chat session initialized:", response.session_id);
+        }
+      } catch (error: unknown) {
+        if (cancelled) return;
+        const message = error instanceof Error ? error.message : "无法启动聊天功能";
+        console.error("聊天会话初始化失败:", error);
+        toast({
+          variant: "destructive",
+          title: "会话初始化失败",
+          description: message,
+        });
+      } finally {
+        if (!cancelled) {
+          setIsInitializing(false);
+        }
+      }
+    };
+
+    initSession();
+
+    return () => {
+      cancelled = true;
+      abortController.abort();
+    };
+  }, [videoData, sessionId, toast]);
 
   const suggestedQuestions = [
     "What's the main topic?",
@@ -175,14 +194,15 @@ const RightPanel = ({
           setStreamingMessageId(null);
         }, response.answer.length * 20 + 500);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unable to get response";
       console.error("发送消息失败:", error);
       setMessages((prev) =>
         prev.map((msg) =>
           msg.id === aiMessageId
             ? {
                 ...msg,
-                content: `❌ Sorry, an error occurred: ${error.message || 'Unable to get response'}`,
+                content: `Sorry, an error occurred: ${message}`,
               }
             : msg
         )

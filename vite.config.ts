@@ -6,11 +6,12 @@ import { componentTagger } from "lovable-tagger";
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
-    host: "::",
+    host: "0.0.0.0",
     port: 8080,
     allowedHosts: [
       'vidsnap.space',
       'www.vidsnap.space',
+      '47.84.58.79',
       'localhost',
       '127.0.0.1'
     ],

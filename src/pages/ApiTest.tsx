@@ -3,13 +3,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { apiService } from '@/services/api';
+import type { ServiceStatusResponse } from '@/services/api';
 
 /**
  * API 测试页面 - 用于验证前后端集成
  */
 export default function ApiTest() {
   const [healthStatus, setHealthStatus] = useState<string>('');
-  const [serviceStatus, setServiceStatus] = useState<any>(null);
+  const [serviceStatus, setServiceStatus] = useState<ServiceStatusResponse | null>(null);
   const [error, setError] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
 
@@ -20,8 +21,9 @@ export default function ApiTest() {
     try {
       const response = await apiService.healthCheck();
       setHealthStatus(response.status);
-    } catch (err: any) {
-      setError(`健康检查失败: ${err.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      setError(`健康检查失败: ${message}`);
     } finally {
       setLoading(false);
     }
@@ -34,8 +36,9 @@ export default function ApiTest() {
     try {
       const response = await apiService.getServiceStatus();
       setServiceStatus(response);
-    } catch (err: any) {
-      setError(`服务状态查询失败: ${err.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      setError(`服务状态查询失败: ${message}`);
     } finally {
       setLoading(false);
     }

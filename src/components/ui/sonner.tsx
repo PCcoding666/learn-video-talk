@@ -1,14 +1,16 @@
-import { useTheme } from "next-themes";
 import { Toaster as Sonner, toast } from "sonner";
 
 type ToasterProps = React.ComponentProps<typeof Sonner>;
 
+// Note: This file originally used next-themes' useTheme() to read the current
+// theme. Since the app has no ThemeProvider, the hook always returned the
+// default "system". We removed the next-themes dependency and hardcode "system"
+// instead. If dark-mode toggling is added later, wrap the app in a
+// ThemeProvider and restore the useTheme() call here.
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme();
-
   return (
     <Sonner
-      theme={theme as ToasterProps["theme"]}
+      theme="system"
       className="toaster group"
       toastOptions={{
         classNames: {

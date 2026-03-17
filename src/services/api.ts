@@ -81,7 +81,7 @@ class ApiClient {
   /**
    * POST 请求
    */
-  async post<T>(endpoint: string, data?: any): Promise<T> {
+  async post<T>(endpoint: string, data?: Record<string, unknown>): Promise<T> {
     return this.request<T>(endpoint, {
       method: 'POST',
       body: JSON.stringify(data),
@@ -140,7 +140,12 @@ export const API_ENDPOINTS = {
     PROCESS: '/video/process',
     STATUS: '/video/status',
     HISTORY: '/video/history',
-    DETAILS: '/video/details',  // 新增视频详情接口
+    DETAILS: '/video/details',
+    // 原子化 API
+    TRANSCRIBE: '/video',     // + /{video_id}/transcribe
+    KEYFRAMES: '/video',      // + /{video_id}/keyframes
+    SUMMARIZE: '/video',      // + /{video_id}/summarize
+    MODULE_STATUS: '/video',  // + /{video_id}/module-status
   },
   
   // 分析结果
@@ -149,6 +154,11 @@ export const API_ENDPOINTS = {
     CHAT_START: '/analysis/chat/start',
     CHAT_MESSAGE: '/analysis/chat/message',
     CHAT_SESSION: '/analysis/chat/session',
+  },
+  
+  // 埋点追踪
+  TELEMETRY: {
+    MODULE_CLICK: '/telemetry/module-click',
   },
 } as const;
 
@@ -187,22 +197,100 @@ export interface AuthResponse {
 export interface ProcessVideoRequest {
   youtube_url?: string;
   video_file?: File;
+  mode?: 'full' | 'ingest';
 }
 
-export interface ProcessVideoResponse {
+// Response from POST /video/process with mode="ingest"
+export interface IngestVideoResponse {
   status: string;
   video_id: string;
-  keyframes_count?: number;
-  transcript_segments_count?: number;
-  metadata?: any;
-  video_summary?: any;
+  title?: string;
+  duration?: number;
+  oss_video_url?: string;
+  video_metadata?: VideoSourceMetadata;
+  message?: string;
+  error?: string;
+}
+
+// Metadata returned inline during ingest (varies by source)
+export interface VideoSourceMetadata {
+  title?: string;
+  duration?: number;
+  thumbnail?: string;
+  description?: string;
+  uploader?: string;
+  view_count?: number;
+  size?: number;
+  format_name?: string;
+  width?: number;
+  height?: number;
+  fps?: number;
+  codec?: string;
+}
+
+// Transcript segment from Supabase compiled metadata
+export interface TranscriptSegment {
+  text: string;
+  start_time: number;
+  end_time: number;
+  confidence: number;
+}
+
+// Transcript block within compiled metadata
+export interface TranscriptMetadata {
+  oss_audio_url?: string;
+  language?: string;
+  overall_confidence?: number;
+  segments?: TranscriptSegment[];
+}
+
+// Keyframe from Supabase compiled metadata
+export interface BackendKeyframe {
+  frame_id: number;
+  timestamp: number;
+  oss_image_url: string;
+  scene_description?: string;
+}
+
+// Video info within compiled metadata
+export interface VideoMetaInfo {
+  title?: string;
+  duration?: number;
+  oss_video_url?: string;
+  original_url?: string;
+  source_type?: string;
+}
+
+// Summaries by granularity
+export interface VideoSummaries {
+  brief?: string;
+  standard?: string;
+  detailed?: string;
+}
+
+// Full compiled metadata from GET /video/details
+export interface CompiledMetadata {
+  transcript?: TranscriptMetadata;
+  keyframes?: BackendKeyframe[];
+  video?: VideoMetaInfo;
+  summaries?: VideoSummaries;
+  title?: string;
+  duration?: number;
+}
+
+// Response from GET /video/details/{video_id}
+export interface VideoDetailsResponse {
+  status: string;
+  video_id: string;
+  metadata?: CompiledMetadata;
+  video_summary?: VideoSummaries;
   summary_generated?: boolean;
 }
 
 // Chat API 类型定义
 export interface ChatStartRequest {
   video_id: string;
-  metadata?: any;  // 可选，如果不提供，后端会自动从Supabase加载
+  metadata?: Record<string, unknown>;
 }
 
 export interface ChatStartResponse {
@@ -221,6 +309,13 @@ export interface ChatMessageRequest {
   auto_keyframes?: boolean;
 }
 
+// Keyframe reference returned in chat message response
+export interface KeyframeReference {
+  frame_id: number;
+  timestamp: number;
+  oss_image_url: string;
+}
+
 export interface ChatMessageResponse {
   status: string;
   session_id: string;
@@ -232,7 +327,7 @@ export interface ChatMessageResponse {
       text: string;
     }>;
     keyframe_ids?: number[];
-    keyframes?: any[];
+    keyframes?: KeyframeReference[];
   };
   history_length: number;
 }
@@ -253,6 +348,58 @@ export interface VideoHistoryResponse {
   videos: VideoHistoryItem[];
   total: number;
   message?: string;
+}
+
+// 埋点相关类型
+export interface ModuleClickEvent {
+  video_id: string;
+  module_id: 'download' | 'transcript' | 'keyframes' | 'summary';
+}
+
+export interface TelemetryResponse {
+  status: string;
+  message: string;
+}
+
+// 原子化 API 类型
+export interface AtomicTaskResponse {
+  status: string;
+  video_id: string;
+  message?: string;
+  error?: string;
+  prerequisite?: string;
+  // transcribe 响应
+  segments_count?: number;
+  language?: string;
+  confidence?: number;
+  segments?: Array<{
+    text: string;
+    start_time: number;
+    end_time: number;
+    confidence: number;
+  }>;
+  // keyframes 响应
+  keyframes_count?: number;
+  keyframes?: Array<{
+    frame_id: number;
+    timestamp: number;
+    oss_image_url: string;
+  }>;
+  // summarize 响应
+  brief_summary?: string;
+  standard_summary?: string;
+  detailed_summary?: string;
+}
+
+export interface ModuleStatusResponse {
+  status: string;
+  video_id: string;
+  modules: {
+    ingest: { status: string; oss_video_url?: string };
+    transcript: { status: string };
+    keyframes: { status: string };
+    summary: { status: string; prerequisite_met: boolean };
+  };
 }
 
 // API 服务方法
@@ -281,7 +428,7 @@ export const apiService = {
   },
 
   // 处理视频
-  async processVideo(data: ProcessVideoRequest): Promise<ProcessVideoResponse> {
+  async processVideo(data: ProcessVideoRequest): Promise<IngestVideoResponse> {
     const formData = new FormData();
     
     if (data.youtube_url) {
@@ -291,8 +438,12 @@ export const apiService = {
     if (data.video_file) {
       formData.append('video_file', data.video_file);
     }
+
+    if (data.mode) {
+      formData.append('mode', data.mode);
+    }
     
-    return apiClient.postFormData<ProcessVideoResponse>(
+    return apiClient.postFormData<IngestVideoResponse>(
       API_ENDPOINTS.VIDEO.PROCESS,
       formData
     );
@@ -327,9 +478,49 @@ export const apiService = {
   },
 
   // 获取视频详情
-  async getVideoDetails(video_id: string): Promise<ProcessVideoResponse> {
-    return apiClient.get<ProcessVideoResponse>(
+  async getVideoDetails(video_id: string): Promise<VideoDetailsResponse> {
+    return apiClient.get<VideoDetailsResponse>(
       `${API_ENDPOINTS.VIDEO.DETAILS}/${video_id}`
+    );
+  },
+
+  // 埋点：模块点击事件（用于画板门测试）
+  async trackModuleClick(video_id: string, module_id: ModuleClickEvent['module_id']): Promise<TelemetryResponse> {
+    return apiClient.post<TelemetryResponse>(
+      API_ENDPOINTS.TELEMETRY.MODULE_CLICK,
+      { video_id, module_id }
+    );
+  },
+
+  // ========================================================================
+  // 原子化 API - 用于百宝箱模式
+  // ========================================================================
+
+  // 原子化转录
+  async transcribeVideo(video_id: string): Promise<AtomicTaskResponse> {
+    return apiClient.post<AtomicTaskResponse>(
+      `${API_ENDPOINTS.VIDEO.TRANSCRIBE}/${video_id}/transcribe`
+    );
+  },
+
+  // 原子化关键帧提取
+  async extractKeyframes(video_id: string): Promise<AtomicTaskResponse> {
+    return apiClient.post<AtomicTaskResponse>(
+      `${API_ENDPOINTS.VIDEO.KEYFRAMES}/${video_id}/keyframes`
+    );
+  },
+
+  // 原子化总结生成
+  async summarizeVideo(video_id: string): Promise<AtomicTaskResponse> {
+    return apiClient.post<AtomicTaskResponse>(
+      `${API_ENDPOINTS.VIDEO.SUMMARIZE}/${video_id}/summarize`
+    );
+  },
+
+  // 获取模块状态
+  async getModuleStatus(video_id: string): Promise<ModuleStatusResponse> {
+    return apiClient.get<ModuleStatusResponse>(
+      `${API_ENDPOINTS.VIDEO.MODULE_STATUS}/${video_id}/module-status`
     );
   },
 };
