@@ -133,6 +133,7 @@ export const API_ENDPOINTS = {
     SIGNIN: '/auth/signin',
     GOOGLE_LOGIN: '/auth/google/login',
     GOOGLE_CALLBACK: '/auth/google/callback',
+    QUOTA: '/auth/quota',
   },
   
   // 视频处理
@@ -142,6 +143,7 @@ export const API_ENDPOINTS = {
     HISTORY: '/video/history',
     DETAILS: '/video/details',
     // 原子化 API
+    DOWNLOAD: '/video',       // + /{video_id}/download
     TRANSCRIBE: '/video',     // + /{video_id}/transcribe
     KEYFRAMES: '/video',      // + /{video_id}/keyframes
     SUMMARIZE: '/video',      // + /{video_id}/summarize
@@ -194,6 +196,15 @@ export interface AuthResponse {
   refresh_token: string;
 }
 
+export interface QuotaResponse {
+  monthly_video_limit: number;
+  monthly_videos_used: number;
+  total_storage_mb: number;
+  used_storage_mb: number;
+  videos_remaining: number;
+  storage_remaining_mb: number;
+}
+
 export interface ProcessVideoRequest {
   youtube_url?: string;
   video_file?: File;
@@ -207,6 +218,10 @@ export interface IngestVideoResponse {
   title?: string;
   duration?: number;
   oss_video_url?: string;
+  thumbnail_url?: string;      // 新增：YouTube 缩略图 URL
+  downloaded?: boolean;         // 新增：是否已下载到 OSS
+  source_type?: 'youtube' | 'upload';  // 新增：来源类型
+  original_url?: string;        // 新增：YouTube 原始 URL
   video_metadata?: VideoSourceMetadata;
   message?: string;
   error?: string;
@@ -313,9 +328,59 @@ export interface ChatMessageRequest {
 export interface KeyframeReference {
   frame_id: number;
   timestamp: number;
-  oss_image_url: string;
+  oss_image_url?: string;
 }
 
+// SSE event types from the ReAct Agent
+export interface SSESessionInfoEvent {
+  type: 'session_info';
+  session_id: string;
+  video_title: string;
+}
+
+export interface SSEToolCallEvent {
+  type: 'tool_call';
+  tool: string;
+  status: 'running' | 'done';
+  round: number;
+  preview?: string;
+}
+
+export interface SSEAnswerChunkEvent {
+  type: 'answer_chunk';
+  content: string;
+}
+
+export interface SSEReferencesEvent {
+  type: 'references';
+  time_ranges?: Array<{
+    start_time: number;
+    end_time: number;
+    text: string;
+  }>;
+  keyframe_ids?: number[];
+  keyframes?: KeyframeReference[];
+}
+
+export interface SSEDoneEvent {
+  type: 'done';
+  history_length: number;
+}
+
+export interface SSEErrorEvent {
+  type: 'error';
+  error: string;
+}
+
+export type SSEChatEvent =
+  | SSESessionInfoEvent
+  | SSEToolCallEvent
+  | SSEAnswerChunkEvent
+  | SSEReferencesEvent
+  | SSEDoneEvent
+  | SSEErrorEvent;
+
+// Legacy non-streaming response type (kept for backwards compat)
 export interface ChatMessageResponse {
   status: string;
   session_id: string;
@@ -427,6 +492,11 @@ export const apiService = {
     return response;
   },
 
+  // 获取用户配额
+  async getQuota(): Promise<QuotaResponse> {
+    return apiClient.get<QuotaResponse>(API_ENDPOINTS.AUTH.QUOTA);
+  },
+
   // 处理视频
   async processVideo(data: ProcessVideoRequest): Promise<IngestVideoResponse> {
     const formData = new FormData();
@@ -462,7 +532,69 @@ export const apiService = {
     );
   },
 
-  // 发送聊天消息
+  // Send chat message via SSE (ReAct Agent)
+  async sendChatMessageSSE(
+    data: ChatMessageRequest,
+    onEvent: (event: SSEChatEvent) => void,
+  ): Promise<void> {
+    const url = `${API_BASE_URL}${API_ENDPOINTS.ANALYSIS.CHAT_MESSAGE}`;
+    const token = localStorage.getItem('access_token');
+
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: response.statusText }));
+      throw new Error(error.detail || `HTTP ${response.status}`);
+    }
+
+    const reader = response.body!.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n\n');
+      // Keep the last incomplete chunk in buffer
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith('data: ')) continue;
+        try {
+          const event = JSON.parse(trimmed.slice(6)) as SSEChatEvent;
+          onEvent(event);
+        } catch {
+          console.warn('Failed to parse SSE event:', trimmed);
+        }
+      }
+    }
+
+    // Process any remaining buffer
+    if (buffer.trim().startsWith('data: ')) {
+      try {
+        const event = JSON.parse(buffer.trim().slice(6)) as SSEChatEvent;
+        onEvent(event);
+      } catch {
+        // ignore
+      }
+    }
+  },
+
+  // Legacy: send chat message (non-streaming fallback)
   async sendChatMessage(data: ChatMessageRequest): Promise<ChatMessageResponse> {
     return apiClient.post<ChatMessageResponse>(
       API_ENDPOINTS.ANALYSIS.CHAT_MESSAGE,
@@ -495,6 +627,13 @@ export const apiService = {
   // ========================================================================
   // 原子化 API - 用于百宝箱模式
   // ========================================================================
+
+  // 原子化下载（YouTube 视频延迟下载）
+  async downloadVideo(video_id: string): Promise<AtomicTaskResponse> {
+    return apiClient.post<AtomicTaskResponse>(
+      `${API_ENDPOINTS.VIDEO.DOWNLOAD}/${video_id}/download`
+    );
+  },
 
   // 原子化转录
   async transcribeVideo(video_id: string): Promise<AtomicTaskResponse> {

@@ -19,17 +19,18 @@ const HistoryPanel = ({ onVideoSelect }: HistoryPanelProps = {}) => {
   const [videos, setVideos] = useState<VideoHistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
     loadHistory();
   }, [user]);
 
-  const loadHistory = async () => {
+  const loadHistory = async (limit: number = 10) => {
     setIsLoading(true);
     setError(null);
     
     try {
-      const response = await apiService.getVideoHistory(10);
+      const response = await apiService.getVideoHistory(limit);
       
       if (response.status === "success") {
         setVideos(response.videos || []);
@@ -43,6 +44,18 @@ const HistoryPanel = ({ onVideoSelect }: HistoryPanelProps = {}) => {
       setError("Unable to load");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleViewAll = async () => {
+    if (showAll) {
+      // Show less - reload with default limit
+      await loadHistory(10);
+      setShowAll(false);
+    } else {
+      // Show all - reload with larger limit
+      await loadHistory(100);
+      setShowAll(true);
     }
   };
 
@@ -98,21 +111,21 @@ const HistoryPanel = ({ onVideoSelect }: HistoryPanelProps = {}) => {
   };
 
   return (
-    <div className="space-y-3 h-full flex flex-col">
+    <div className="space-y-2 h-full flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Clock className="w-4 h-4 text-muted-foreground" />
-          <h3 className="text-sm font-medium text-foreground">Recent</h3>
+        <div className="flex items-center gap-1.5">
+          <Clock className="w-3 h-3 text-muted-foreground/60" />
+          <h3 className="text-[10px] font-mono font-bold text-muted-foreground/70 uppercase tracking-wider">Recent</h3>
         </div>
         {error && !isLoading && (
           <Button
             variant="ghost"
             size="icon"
-            className="h-6 w-6 hover:bg-primary/10"
+            className="h-5 w-5 hover:bg-primary/10"
             onClick={loadHistory}
           >
-            <RefreshCw className="w-3 h-3" />
+            <RefreshCw className="w-2.5 h-2.5" />
           </Button>
         )}
       </div>
@@ -120,47 +133,47 @@ const HistoryPanel = ({ onVideoSelect }: HistoryPanelProps = {}) => {
       {/* Content */}
       <ScrollArea className="flex-1">
         {isLoading ? (
-          <div className="flex items-center justify-center py-8 text-muted-foreground">
-            <Loader2 className="w-4 h-4 animate-spin mr-2" />
-            <span className="text-xs">Loading...</span>
+          <div className="flex items-center justify-center py-6 text-muted-foreground">
+            <Loader2 className="w-3 h-3 animate-spin mr-1.5" />
+            <span className="text-[10px] font-mono">Loading...</span>
           </div>
         ) : error && videos.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <AlertCircle className="w-5 h-5 text-muted-foreground/50 mb-2" />
-            <span className="text-xs text-muted-foreground">{error}</span>
+          <div className="flex flex-col items-center justify-center py-6 text-center">
+            <AlertCircle className="w-4 h-4 text-muted-foreground/40 mb-1.5" />
+            <span className="text-[10px] font-mono text-muted-foreground/60">{error}</span>
             <Button
               variant="ghost"
               size="sm"
-              className="mt-2 h-7 text-xs"
+              className="mt-1.5 h-6 text-[10px] font-mono"
               onClick={loadHistory}
             >
-              <RefreshCw className="w-3 h-3 mr-1" />
+              <RefreshCw className="w-2.5 h-2.5 mr-1" />
               Retry
             </Button>
           </div>
         ) : videos.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <PlayCircle className="w-5 h-5 text-muted-foreground/50 mb-2" />
-            <span className="text-xs text-muted-foreground">No videos yet</span>
+          <div className="flex flex-col items-center justify-center py-6 text-center">
+            <PlayCircle className="w-4 h-4 text-muted-foreground/30 mb-1.5" />
+            <span className="text-[10px] font-mono text-muted-foreground/40">No videos yet</span>
           </div>
         ) : (
-          <div className="space-y-1.5">
+          <div className="space-y-0.5">
             {videos.map((video) => (
               <button
                 key={video.id}
                 onClick={() => handleVideoClick(video)}
-                className="w-full p-2.5 rounded-lg hover:bg-muted/50 transition-colors text-left group"
+                className="w-full px-2 py-1.5 rounded hover:bg-muted/30 transition-colors text-left group"
               >
-                <div className="flex items-start gap-2.5">
-                  <div className="relative mt-1">
-                    <PlayCircle className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                    <div className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full ${getStatusDot(video.processing_status)}`} />
+                <div className="flex items-start gap-2">
+                  <div className="relative mt-0.5">
+                    <PlayCircle className="w-3.5 h-3.5 text-muted-foreground/50 group-hover:text-primary transition-colors" />
+                    <div className={`absolute -bottom-0.5 -right-0.5 w-1.5 h-1.5 rounded-full ${getStatusDot(video.processing_status)}`} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground line-clamp-1 group-hover:text-primary transition-colors">
+                    <p className="text-[11px] font-mono text-foreground/80 line-clamp-1 group-hover:text-primary transition-colors">
                       {video.title}
                     </p>
-                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-0.5">
+                    <div className="flex items-center gap-1.5 text-[9px] font-mono text-muted-foreground/40 mt-0.5">
                       <span>{formatTime(video.created_at)}</span>
                       <span>·</span>
                       <span>{formatDuration(video.duration)}</span>
@@ -176,10 +189,15 @@ const HistoryPanel = ({ onVideoSelect }: HistoryPanelProps = {}) => {
       {videos.length > 0 && (
         <Button 
           variant="ghost" 
-          className="w-full text-xs h-8 text-muted-foreground hover:text-foreground hover:bg-muted/50" 
+          className="w-full text-[10px] font-mono h-7 text-muted-foreground/50 hover:text-primary hover:bg-primary/5" 
           size="sm"
+          onClick={handleViewAll}
+          disabled={isLoading}
         >
-          View all
+          {isLoading ? (
+            <Loader2 className="w-2.5 h-2.5 animate-spin mr-1" />
+          ) : null}
+          {showAll ? "Show less" : "View all"}
         </Button>
       )}
     </div>

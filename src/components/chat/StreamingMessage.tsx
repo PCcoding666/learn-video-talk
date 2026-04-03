@@ -1,43 +1,71 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import MarkdownRenderer from './MarkdownRenderer';
 
 interface StreamingMessageProps {
   content: string;
   isStreaming?: boolean;
-  speed?: number; // 每个字符的延迟时间（毫秒）
+  speed?: number; // Characters per frame (higher = faster)
 }
 
-const StreamingMessage = ({ content, isStreaming = false, speed = 20 }: StreamingMessageProps) => {
-  const [displayedContent, setDisplayedContent] = useState('');
-  const indexRef = useRef(0);
+const StreamingMessage = ({ content, isStreaming = false, speed = 5 }: StreamingMessageProps) => {
+  const [displayIndex, setDisplayIndex] = useState(0);
   const prevContentRef = useRef(content);
+  const rafRef = useRef<number | null>(null);
+  const lastTimeRef = useRef(0);
 
   useEffect(() => {
     // If content changed, reset the streaming index
     if (content !== prevContentRef.current) {
-      indexRef.current = 0;
+      setDisplayIndex(0);
       prevContentRef.current = content;
     }
 
     if (!isStreaming) {
-      setDisplayedContent(content);
+      setDisplayIndex(content.length);
       return;
     }
 
-    if (indexRef.current < content.length) {
-      const timeout = setTimeout(() => {
-        indexRef.current += 1;
-        setDisplayedContent(content.slice(0, indexRef.current));
-      }, speed);
+    const animate = (time: number) => {
+      // Throttle updates to ~60fps (16ms between frames)
+      if (time - lastTimeRef.current < 16) {
+        rafRef.current = requestAnimationFrame(animate);
+        return;
+      }
+      lastTimeRef.current = time;
 
-      return () => clearTimeout(timeout);
+      setDisplayIndex(prev => {
+        if (prev >= content.length) {
+          return prev;
+        }
+        // Add multiple characters per frame for faster streaming
+        return Math.min(prev + speed, content.length);
+      });
+
+      rafRef.current = requestAnimationFrame(animate);
+    };
+
+    if (displayIndex < content.length) {
+      rafRef.current = requestAnimationFrame(animate);
     }
-  }, [content, isStreaming, speed, displayedContent]);
+
+    return () => {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+      }
+    };
+  }, [content, isStreaming, speed, displayIndex]);
+
+  // Memoize the displayed content to avoid recalculation on every render
+  const displayedContent = useMemo(() => {
+    return content.slice(0, displayIndex);
+  }, [content, displayIndex]);
+
+  const isComplete = displayIndex >= content.length;
 
   return (
     <>
       <MarkdownRenderer content={displayedContent} />
-      {isStreaming && indexRef.current < content.length && (
+      {isStreaming && !isComplete && (
         <span className="inline-block w-1 h-4 ml-1 bg-primary animate-pulse" />
       )}
     </>

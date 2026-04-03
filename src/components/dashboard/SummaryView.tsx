@@ -1,62 +1,74 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Copy, Download, FileDown } from "lucide-react";
+import { Copy, Download, FileDown, CheckCircle } from "lucide-react";
+import { useState } from "react";
 import MarkdownRenderer from "@/components/chat/MarkdownRenderer";
 import type { VideoData } from "@/pages/MainApp";
+import { useToast } from "@/hooks/use-toast";
 
 interface SummaryViewProps {
-  videoData: VideoData;
+  videoData: VideoData & {
+    resolution?: string;
+    file_size?: string;
+  };
 }
 
 const SummaryView = ({ videoData }: SummaryViewProps) => {
-  // 从 summary中提取关键点（如果有的话）
-  // TODO: 后续可以让LLM生成结构化的关键点
-  const keyPoints = [
-    "视频内容的核心要点",
-  ];
+  const { toast } = useToast();
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(videoData.summary);
+      setCopied(true);
+      toast({ title: "Copied", description: "Summary copied to clipboard" });
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast({ title: "Error", description: "Failed to copy", variant: "destructive" });
+    }
+  };
+
+  const handleDownloadVideo = () => {
+    if (videoData.oss_video_url) {
+      window.open(videoData.oss_video_url, '_blank');
+    } else {
+      toast({ title: "Not available", description: "Video not downloaded yet", variant: "destructive" });
+    }
+  };
+
+  const handleExportMD = () => {
+    const content = `# ${videoData.title}\n\n## Summary\n\n${videoData.summary}\n\n## Transcript\n\n${videoData.transcript || 'N/A'}`;
+    const blob = new Blob([content], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${videoData.title.replace(/[^a-z0-9]/gi, '_')}_summary.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: "Exported", description: "Summary exported as Markdown" });
+  };
 
   return (
     <div className="space-y-6">
-      {/* Key Points */}
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <span>🎯</span>
-          核心观点
-        </h3>
-        <div className="space-y-3">
-          {keyPoints.map((point, index) => (
-            <div
-              key={index}
-              className="flex gap-3 p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-            >
-              <span className="text-primary font-semibold">•</span>
-              <p className="flex-1">{point}</p>
-            </div>
-          ))}
-        </div>
-      </Card>
-
       {/* Detailed Summary */}
       <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold flex items-center gap-2">
             <span>📚</span>
-            详细总结
+            Summary
           </h3>
           <Button 
             variant="ghost" 
             size="sm" 
             className="gap-2"
-            onClick={() => {
-              navigator.clipboard.writeText(videoData.summary);
-            }}
+            onClick={handleCopy}
           >
-            <Copy className="w-4 h-4" />
-            复制
+            {copied ? <CheckCircle className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+            {copied ? "Copied" : "Copy"}
           </Button>
         </div>
         <div className="prose prose-sm dark:prose-invert max-w-none">
-          <MarkdownRenderer content={videoData.summary || "暂无总结"} />
+          <MarkdownRenderer content={videoData.summary || "No summary available yet. Run the AI Summary module to generate."} />
         </div>
       </Card>
 
@@ -64,38 +76,46 @@ const SummaryView = ({ videoData }: SummaryViewProps) => {
       <Card className="p-6">
         <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
           <span>📊</span>
-          视频信息
+          Video Info
         </h3>
         <div className="grid grid-cols-3 gap-4">
           <div className="text-center p-4 rounded-lg bg-muted/50">
             <div className="text-2xl mb-2">🕐</div>
-            <p className="text-sm text-muted-foreground mb-1">时长</p>
-            <p className="font-semibold">{videoData.duration}</p>
+            <p className="text-sm text-muted-foreground mb-1">Duration</p>
+            <p className="font-semibold">{videoData.duration || "N/A"}</p>
           </div>
           <div className="text-center p-4 rounded-lg bg-muted/50">
             <div className="text-2xl mb-2">👁️</div>
-            <p className="text-sm text-muted-foreground mb-1">分辨率</p>
-            {/* TODO: Replace with actual resolution from video metadata (e.g. videoData.width x videoData.height) */}
-            <p className="font-semibold">1080p</p>
+            <p className="text-sm text-muted-foreground mb-1">Resolution</p>
+            <p className="font-semibold">{videoData.resolution || "N/A"}</p>
           </div>
           <div className="text-center p-4 rounded-lg bg-muted/50">
             <div className="text-2xl mb-2">💾</div>
-            <p className="text-sm text-muted-foreground mb-1">文件大小</p>
-            {/* TODO: Replace with actual file size from video metadata */}
-            <p className="font-semibold">45.2 MB</p>
+            <p className="text-sm text-muted-foreground mb-1">File Size</p>
+            <p className="font-semibold">{videoData.file_size || "N/A"}</p>
           </div>
         </div>
       </Card>
 
       {/* Actions */}
       <div className="flex gap-4">
-        <Button variant="outline" className="flex-1 gap-2">
+        <Button 
+          variant="outline" 
+          className="flex-1 gap-2"
+          onClick={handleDownloadVideo}
+          disabled={!videoData.oss_video_url}
+        >
           <Download className="w-4 h-4" />
-          下载原视频
+          Download Video
         </Button>
-        <Button variant="outline" className="flex-1 gap-2">
+        <Button 
+          variant="outline" 
+          className="flex-1 gap-2"
+          onClick={handleExportMD}
+          disabled={!videoData.summary}
+        >
           <FileDown className="w-4 h-4" />
-          导出总结为 MD
+          Export as MD
         </Button>
       </div>
     </div>

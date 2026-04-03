@@ -3,9 +3,9 @@
     "startTitle": "开始处理视频",
     "downloadingYoutube": "正在下载并分析 YouTube 视频...",
     "uploadingVideo": "正在上传并分析视频文件...",
-    "completeTitle": "✅ 处理完成",
+    "completeTitle": "处理完成",
     "completeDescription": "视频分析成功，生成了 {{count}} 个关键帧",
-    "failedTitle": "❌ 处理失败",
+    "failedTitle": "处理失败",
     "failedDescription": "视频处理过程中发生错误，请重试",
     "dataConversionFailed": "数据转换失败: {{message}}",
     "processingFailed": "处理失败"
@@ -14,16 +14,90 @@
     "untitled": "未命名视频",
     "unknownDuration": "未知",
     "noSummaryAvailable": "暂无摘要",
-    "keyframe": "关键帧 {{number}}"
+    "keyframe": "关键帧 {{number}}",
+    "duration": "时长",
+    "resolution": "分辨率",
+    "fileSize": "文件大小",
+    "source": "来源"
   },
   "status": {
     "processing": "仍在处理中，请稍候",
     "failed": "处理失败",
-    "completed": "已完成"
+    "completed": "已完成",
+    "pending": "等待中"
   },
   "common": {
     "processing": "处理中...",
     "error": "错误",
-    "success": "成功"
+    "success": "成功",
+    "cancel": "取消",
+    "confirm": "确认",
+    "save": "保存",
+    "delete": "删除",
+    "edit": "编辑",
+    "close": "关闭",
+    "loading": "加载中...",
+    "retry": "重试",
+    "submit": "提交",
+    "send": "发送"
+  },
+  "chat": {
+    "placeholder": "输入你的问题...",
+    "send": "发送",
+    "welcome": "欢迎使用视频助手",
+    "welcomeDescription": "您可以询问关于视频内容的任何问题",
+    "keyframeLimit": "已达上限",
+    "keyframeLimitDesc": "最多只能选择 {{max}} 张关键帧",
+    "keyframeSelected": "已选择",
+    "keyframeSelectedDesc": "关键帧 #{{id}} 已在选择列表中",
+    "keyframeAdded": "关键帧已添加",
+    "keyframeAddedDesc": "已选中 {{current}}/{{max}} 张关键帧",
+    "analyzePrompt": "请分析这些场景的内容",
+    "suggestedQuestions": "推荐问题",
+    "sessionReady": "会话已就绪，开始对话吧",
+    "sendError": "发送消息失败"
+  },
+  "panel": {
+    "transcript": "转录文本",
+    "summary": "摘要",
+    "keyframes": "关键帧",
+    "chat": "对话",
+    "history": "历史记录",
+    "settings": "设置",
+    "searchPlaceholder": "搜索转录内容...",
+    "noResults": "未找到结果",
+    "viewAll": "查看全部",
+    "viewLess": "收起"
+  },
+  "auth": {
+    "login": "登录",
+    "logout": "退出登录",
+    "signup": "注册",
+    "email": "邮箱",
+    "password": "密码",
+    "forgotPassword": "忘记密码?",
+    "noAccount": "没有账号?",
+    "hasAccount": "已有账号?",
+    "loginSuccess": "登录成功",
+    "loginFailed": "登录失败",
+    "logoutSuccess": "已退出登录"
+  },
+  "upload": {
+    "dragDrop": "拖拽文件到此处或点击上传",
+    "selectFile": "选择文件",
+    "uploadVideo": "上传视频",
+    "pasteUrl": "粘贴 YouTube 链接",
+    "urlPlaceholder": "输入 YouTube 视频链接...",
+    "startAnalysis": "开始分析",
+    "supportedFormats": "支持的格式: MP4, WebM, MOV"
+  },
+  "errors": {
+    "networkError": "网络连接失败",
+    "serverError": "服务器错误",
+    "unauthorized": "请先登录",
+    "forbidden": "无权访问",
+    "notFound": "资源不存在",
+    "videoNotFound": "视频不存在",
+    "quotaExceeded": "已达到使用配额上限"
   }
 }

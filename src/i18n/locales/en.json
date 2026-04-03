@@ -3,9 +3,9 @@
     "startTitle": "Start Processing Video",
     "downloadingYoutube": "Downloading and analyzing YouTube video...",
     "uploadingVideo": "Uploading and analyzing video file...",
-    "completeTitle": "✅ Processing Complete",
+    "completeTitle": "Processing Complete",
     "completeDescription": "Video successfully analyzed, generated {{count}} keyframes",
-    "failedTitle": "❌ Processing Failed",
+    "failedTitle": "Processing Failed",
     "failedDescription": "An error occurred during video processing, please try again",
     "dataConversionFailed": "Data conversion failed: {{message}}",
     "processingFailed": "Processing failed"
@@ -14,16 +14,90 @@
     "untitled": "Untitled Video",
     "unknownDuration": "Unknown",
     "noSummaryAvailable": "No summary available",
-    "keyframe": "Keyframe {{number}}"
+    "keyframe": "Keyframe {{number}}",
+    "duration": "Duration",
+    "resolution": "Resolution",
+    "fileSize": "File Size",
+    "source": "Source"
   },
   "status": {
     "processing": "Still processing, please wait",
     "failed": "Processing failed",
-    "completed": "Completed"
+    "completed": "Completed",
+    "pending": "Pending"
   },
   "common": {
     "processing": "Processing...",
     "error": "Error",
-    "success": "Success"
+    "success": "Success",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "loading": "Loading...",
+    "retry": "Retry",
+    "submit": "Submit",
+    "send": "Send"
+  },
+  "chat": {
+    "placeholder": "Type your question...",
+    "send": "Send",
+    "welcome": "Welcome to Video Assistant",
+    "welcomeDescription": "You can ask any questions about the video content",
+    "keyframeLimit": "Limit Reached",
+    "keyframeLimitDesc": "You can only select up to {{max}} keyframes",
+    "keyframeSelected": "Already Selected",
+    "keyframeSelectedDesc": "Keyframe #{{id}} is already in the selection",
+    "keyframeAdded": "Keyframe Added",
+    "keyframeAddedDesc": "Selected {{current}}/{{max}} keyframes",
+    "analyzePrompt": "Please analyze the content of these scenes",
+    "suggestedQuestions": "Suggested Questions",
+    "sessionReady": "Session ready, start chatting",
+    "sendError": "Failed to send message"
+  },
+  "panel": {
+    "transcript": "Transcript",
+    "summary": "Summary",
+    "keyframes": "Keyframes",
+    "chat": "Chat",
+    "history": "History",
+    "settings": "Settings",
+    "searchPlaceholder": "Search transcript...",
+    "noResults": "No results found",
+    "viewAll": "View All",
+    "viewLess": "View Less"
+  },
+  "auth": {
+    "login": "Log In",
+    "logout": "Log Out",
+    "signup": "Sign Up",
+    "email": "Email",
+    "password": "Password",
+    "forgotPassword": "Forgot password?",
+    "noAccount": "Don't have an account?",
+    "hasAccount": "Already have an account?",
+    "loginSuccess": "Login successful",
+    "loginFailed": "Login failed",
+    "logoutSuccess": "Logged out successfully"
+  },
+  "upload": {
+    "dragDrop": "Drag and drop files here or click to upload",
+    "selectFile": "Select File",
+    "uploadVideo": "Upload Video",
+    "pasteUrl": "Paste YouTube URL",
+    "urlPlaceholder": "Enter YouTube video URL...",
+    "startAnalysis": "Start Analysis",
+    "supportedFormats": "Supported formats: MP4, WebM, MOV"
+  },
+  "errors": {
+    "networkError": "Network connection failed",
+    "serverError": "Server error",
+    "unauthorized": "Please log in first",
+    "forbidden": "Access denied",
+    "notFound": "Resource not found",
+    "videoNotFound": "Video not found",
+    "quotaExceeded": "Usage quota exceeded"
   }
 }
